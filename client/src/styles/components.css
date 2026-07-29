@@ -1,0 +1,367 @@
+/* ---------- buttons ---------- */
+.btn {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 14px;
+  border-radius: var(--r-md);
+  height: 40px;
+  padding: 0 var(--sp-6);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
+  white-space: nowrap;
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn-primary {
+  background: var(--ember);
+  color: var(--ember-text-on);
+}
+.btn-primary:hover:not(:disabled) {
+  background: #ff6a43;
+}
+.btn-secondary {
+  background: transparent;
+  border-color: var(--iron-600);
+  color: var(--steam-100);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--iron-900);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--steam-400);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--iron-900);
+  color: var(--steam-100);
+}
+.btn-danger {
+  background: transparent;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.btn-danger:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.1);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-sm {
+  height: 32px;
+  font-size: 13px;
+  padding: 0 var(--sp-4);
+}
+.btn-lg {
+  height: 48px;
+  font-size: 15px;
+  padding: 0 var(--sp-8);
+}
+.btn-block {
+  width: 100%;
+}
+
+/* ---------- cards ---------- */
+.panel-card {
+  border-radius: var(--r-md);
+  border: 1px solid var(--iron-700);
+  background: var(--iron-900);
+  padding: var(--sp-6);
+}
+
+.game-card {
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--iron-700);
+  background: var(--iron-900);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+.game-card:hover {
+  box-shadow: 0 0 0 1px var(--ember-dim), 0 16px 40px rgba(0, 0, 0, 0.5);
+  transform: scale(1.015);
+  border-color: rgba(242, 84, 45, 0.35);
+}
+.game-card .cover {
+  height: 140px;
+  background: linear-gradient(135deg, rgba(242, 84, 45, 0.35), rgba(11, 14, 20, 0) 60%),
+    repeating-linear-gradient(45deg, var(--iron-800) 0 2px, var(--forge-black) 2px 4px);
+  position: relative;
+  flex-shrink: 0;
+}
+.game-card .cover::before,
+.game-card .cover::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid transparent;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.game-card:hover .cover::before {
+  opacity: 1;
+  top: 8px;
+  left: 8px;
+  border-top-color: var(--ember);
+  border-left-color: var(--ember);
+}
+.game-card:hover .cover::after {
+  opacity: 1;
+  bottom: 8px;
+  right: 8px;
+  border-bottom-color: var(--ember);
+  border-right-color: var(--ember);
+}
+.game-card .body {
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  flex: 1;
+}
+.game-card .title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+}
+.game-card .price {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--steam-400);
+}
+
+.cover-hero {
+  background: linear-gradient(135deg, rgba(242, 84, 45, 0.35), rgba(11, 14, 20, 0) 60%),
+    repeating-linear-gradient(45deg, var(--iron-800) 0 2px, var(--forge-black) 2px 4px);
+  border: 1px solid var(--iron-700);
+}
+
+/* ---------- badges ---------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+  border: 1px solid transparent;
+  width: fit-content;
+}
+.badge-success {
+  background: rgba(52, 211, 153, 0.12);
+  color: var(--success);
+  border-color: rgba(52, 211, 153, 0.3);
+}
+.badge-warning {
+  background: rgba(251, 191, 36, 0.12);
+  color: var(--warning);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+.badge-danger {
+  background: rgba(248, 113, 113, 0.12);
+  color: var(--danger);
+  border-color: rgba(248, 113, 113, 0.3);
+}
+.badge-info {
+  background: rgba(96, 165, 250, 0.12);
+  color: var(--info);
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+/* ---------- forms ---------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--steam-400);
+}
+.field input,
+.field textarea,
+.field select {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--steam-100);
+  background: var(--iron-900);
+  border: 1px solid var(--iron-700);
+  border-radius: var(--r-sm);
+  height: 40px;
+  padding: 0 var(--sp-3);
+}
+.field textarea {
+  height: auto;
+  min-height: 96px;
+  padding: var(--sp-3);
+  resize: vertical;
+  font-family: var(--font-body);
+}
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--ember);
+  box-shadow: 0 0 0 3px var(--ember-dim);
+}
+.field.error input,
+.field.error textarea {
+  border-color: var(--danger);
+}
+.field .hint {
+  font-size: 12px;
+  color: var(--steam-600);
+}
+.field.error .hint {
+  color: var(--danger);
+}
+.field.success input {
+  border-color: var(--success);
+}
+
+.form-error-banner {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: var(--danger);
+  border-radius: var(--r-sm);
+  padding: var(--sp-3) var(--sp-4);
+  font-size: 13px;
+}
+
+/* ---------- layout helpers ---------- */
+.stack {
+  display: flex;
+  flex-direction: column;
+}
+.row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--sp-8) var(--sp-6) var(--sp-24);
+}
+.grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--sp-6);
+}
+
+/* ---------- top nav ---------- */
+.topnav {
+  border-bottom: 1px solid var(--iron-700);
+  background: var(--forge-black);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.topnav-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 var(--sp-6);
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-6);
+}
+.brand {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 18px;
+  text-decoration: none;
+  color: var(--steam-100);
+  flex-shrink: 0;
+}
+.brand .ember-dot {
+  color: var(--ember);
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 1;
+}
+.nav-link {
+  font-size: 14px;
+  color: var(--steam-400);
+  text-decoration: none;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  border-left: 2px solid transparent;
+}
+.nav-link:hover {
+  color: var(--steam-100);
+  background: var(--iron-900);
+}
+.nav-link.active {
+  color: var(--steam-100);
+  font-weight: 500;
+  border-left-color: var(--ember);
+}
+.portal-nav .nav-link.active {
+  border-left-color: var(--portal-color, var(--ember));
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--iron-900);
+  border: 1px solid var(--iron-700);
+  border-radius: var(--r-full);
+  height: 32px;
+  padding: 0 var(--sp-3) 0 var(--sp-2);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--steam-400);
+}
+.theme-toggle:hover {
+  color: var(--steam-100);
+  border-color: var(--iron-600);
+}
+.theme-toggle svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ---------- toast ---------- */
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: var(--iron-900);
+  border: 1px solid rgba(242, 84, 45, 0.35);
+  box-shadow: 0 0 0 1px var(--ember-dim), 0 16px 40px rgba(0, 0, 0, 0.5);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+  font-size: 13px;
+  position: fixed;
+  bottom: var(--sp-8);
+  right: var(--sp-8);
+  z-index: 50;
+}
+.toast .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 8px var(--ember);
+  flex-shrink: 0;
+}

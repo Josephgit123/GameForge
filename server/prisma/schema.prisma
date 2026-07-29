@@ -1,0 +1,236 @@
+// GameForge Prisma schema.
+// Every model, column, and relationship here is transcribed from
+// docs/DATABASE.md (itself transcribed from CLAUDE.md's schema section).
+// Anything marked "(proposed)" in DATABASE.md — id type, enum value sets,
+// relationship cardinality, the WebhookEvent unique key — is implemented
+// here as proposed, and is NOT independently re-decided in this file.
+// If you change a modeling decision, update DATABASE.md first.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  PUBLISHER
+  ADMIN
+}
+
+enum PublisherStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// (proposed) exact values not specified in CLAUDE.md — see docs/DATABASE.md
+enum GameStatus {
+  DRAFT
+  PUBLISHED
+  DELISTED
+}
+
+// (proposed) exact values not specified in CLAUDE.md — see docs/DATABASE.md
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// (proposed) exact values not specified in CLAUDE.md — see docs/DATABASE.md
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+// (proposed) exact values not specified in CLAUDE.md — see docs/DATABASE.md
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  COMPLETED
+  REJECTED
+}
+
+// (proposed) exact values not specified in CLAUDE.md — see docs/DATABASE.md
+enum GiftCardStatus {
+  ACTIVE
+  DEPLETED
+  EXPIRED
+}
+
+// (proposed) exact values not specified in CLAUDE.md — see docs/DATABASE.md
+enum PromotionType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+model User {
+  id           String @id @default(uuid())
+  email        String @unique
+  passwordHash String
+  role         Role
+  firstName    String
+  lastName     String
+
+  publisher      Publisher?
+  orders         Order[]        @relation("CustomerOrders")
+  libraryEntries LibraryEntry[]
+}
+
+model Publisher {
+  id                     String          @id @default(uuid())
+  userId                 String          @unique
+  surfboardMerchantId    String?
+  surfboardApplicationId String?
+  status                 PublisherStatus @default(PENDING)
+
+  user   User    @relation(fields: [userId], references: [id])
+  stores Store[]
+  games  Game[]
+}
+
+model Store {
+  id               String @id @default(uuid())
+  publisherId      String
+  surfboardStoreId String
+
+  publisher Publisher @relation(fields: [publisherId], references: [id])
+}
+
+model Game {
+  id          String     @id @default(uuid())
+  publisherId String
+  title       String
+  description String
+  price       Int
+  currency    String
+  status      GameStatus @default(DRAFT)
+
+  publisher      Publisher      @relation(fields: [publisherId], references: [id])
+  orderItems     OrderItem[]
+  libraryEntries LibraryEntry[]
+}
+
+model Order {
+  id               String      @id @default(uuid())
+  customerId       String
+  surfboardOrderId String?
+  status           OrderStatus @default(PENDING)
+  totalAmount      Int
+  currency         String
+  createdAt        DateTime    @default(now())
+
+  customer           User                 @relation("CustomerOrders", fields: [customerId], references: [id])
+  items              OrderItem[]
+  payments           Payment[]
+  refunds            Refund[]
+  libraryEntries     LibraryEntry[]
+  giftCardRedemption GiftCardRedemption?
+  promotionUsage     PromotionUsage?
+}
+
+model OrderItem {
+  id              String @id @default(uuid())
+  orderId         String
+  gameId          String
+  priceAtPurchase Int
+
+  order Order @relation(fields: [orderId], references: [id])
+  game  Game  @relation(fields: [gameId], references: [id])
+}
+
+model Payment {
+  id                 String        @id @default(uuid())
+  orderId            String
+  surfboardPaymentId String
+  status             PaymentStatus @default(PENDING)
+  method             String
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model Refund {
+  id                String       @id @default(uuid())
+  orderId           String
+  surfboardRefundId String?
+  status            RefundStatus @default(REQUESTED)
+  reason            String
+  amount            Int
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model LibraryEntry {
+  id         String   @id @default(uuid())
+  customerId String
+  gameId     String
+  orderId    String
+  acquiredAt DateTime @default(now())
+
+  customer User  @relation(fields: [customerId], references: [id])
+  game     Game  @relation(fields: [gameId], references: [id])
+  order    Order @relation(fields: [orderId], references: [id])
+}
+
+model GiftCard {
+  id                  String         @id @default(uuid())
+  surfboardGiftCardId String
+  code                String         @unique
+  initialBalance      Int
+  currentBalance      Int
+  status              GiftCardStatus @default(ACTIVE)
+
+  redemptions GiftCardRedemption[]
+}
+
+model GiftCardRedemption {
+  id            String @id @default(uuid())
+  giftCardId    String
+  orderId       String @unique
+  amountApplied Int
+
+  giftCard GiftCard @relation(fields: [giftCardId], references: [id])
+  order    Order    @relation(fields: [orderId], references: [id])
+}
+
+model Promotion {
+  id                   String        @id @default(uuid())
+  surfboardPromotionId String
+  code                 String        @unique
+  type                 PromotionType
+  value                Int
+  startsAt             DateTime
+  endsAt               DateTime
+  usageLimit           Int
+
+  usages PromotionUsage[]
+}
+
+model PromotionUsage {
+  id              String @id @default(uuid())
+  promotionId     String
+  orderId         String @unique
+  discountApplied Int
+
+  promotion Promotion @relation(fields: [promotionId], references: [id])
+  order     Order     @relation(fields: [orderId], references: [id])
+}
+
+model WebhookEvent {
+  id                   String    @id @default(uuid())
+  eventType            String
+  surfboardReferenceId String
+  payload              Json
+  processedAt          DateTime?
+
+  // (proposed) composite dedupe key — see docs/DATABASE.md's idempotency
+  // pattern section for why, and the caveat that a Surfboard-native event
+  // ID (if one exists in the payload) would be a better key once confirmed.
+  @@unique([eventType, surfboardReferenceId])
+}

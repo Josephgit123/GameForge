@@ -1,0 +1,142 @@
+import { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { api, ApiError } from '../lib/api';
+import { formatMoney } from '../lib/money';
+import type { Game } from '../lib/types';
+
+function statusBadgeClass(status: Game['status']) {
+  if (status === 'PUBLISHED') return 'badge badge-success';
+  if (status === 'DRAFT') return 'badge badge-warning';
+  return 'badge badge-danger';
+}
+
+export function PublisherGames() {
+  const { token } = useAuth();
+  const [games, setGames] = useState<Game[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [currency, setCurrency] = useState('USD');
+  const [formError, setFormError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  function refresh() {
+    api
+      .get<{ games: Game[] }>('/games/mine/all', token)
+      .then((res) => setGames(res.games))
+      .catch(() => setError('Could not load your games.'));
+  }
+
+  useEffect(refresh, [token]);
+
+  async function onCreate(e: FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+    const priceMinorUnits = Math.round(Number(price) * 100);
+    if (!title || !description || !priceMinorUnits || priceMinorUnits <= 0) {
+      setFormError('Fill in a title, description, and a price greater than 0.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.post('/games', { title, description, price: priceMinorUnits, currency }, token);
+      setTitle('');
+      setDescription('');
+      setPrice('');
+      setFormOpen(false);
+      refresh();
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Something went wrong. Try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function toggleStatus(game: Game) {
+    const nextStatus = game.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED';
+    try {
+      await api.patch(`/games/${game.id}`, { status: nextStatus }, token);
+      refresh();
+    } catch {
+      setError(`Could not update "${game.title}".`);
+    }
+  }
+
+  return (
+    <div className="page">
+      <div className="row" style={{ justifyContent: 'space-between', marginBottom: 'var(--sp-8)' }}>
+        <h1>My games</h1>
+        <button type="button" className="btn btn-primary" onClick={() => setFormOpen((v) => !v)}>
+          {formOpen ? 'Cancel' : 'Add game'}
+        </button>
+      </div>
+
+      {formOpen && (
+        <form onSubmit={onCreate} className="panel-card stack" style={{ gap: 'var(--sp-4)', marginBottom: 'var(--sp-8)' }}>
+          {formError && <div className="form-error-banner">{formError}</div>}
+          <div className="field">
+            <label htmlFor="title">Title</label>
+            <input id="title" required value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="description">Description</label>
+            <textarea id="description" required value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div className="row" style={{ gap: 'var(--sp-4)' }}>
+            <div className="field" style={{ flex: 1 }}>
+              <label htmlFor="price">Price</label>
+              <input
+                id="price"
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+              />
+              <span className="hint">Stored as integer minor units — you enter the display amount.</span>
+            </div>
+            <div className="field" style={{ width: 120 }}>
+              <label htmlFor="currency">Currency</label>
+              <input id="currency" required value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} />
+            </div>
+          </div>
+          <button type="submit" className="btn btn-primary" disabled={submitting} style={{ alignSelf: 'flex-start' }}>
+            {submitting ? 'Creating…' : 'Create game (as draft)'}
+          </button>
+        </form>
+      )}
+
+      {error && <div className="form-error-banner" style={{ marginBottom: 'var(--sp-6)' }}>{error}</div>}
+      {!error && !games && <p style={{ color: 'var(--steam-400)' }}>Loading…</p>}
+      {games && games.length === 0 && <p style={{ color: 'var(--steam-400)' }}>No games yet — add your first one above.</p>}
+
+      {games && games.length > 0 && (
+        <div className="stack" style={{ gap: 'var(--sp-3)' }}>
+          {games.map((game) => (
+            <div key={game.id} className="panel-card row" style={{ justifyContent: 'space-between' }}>
+              <div className="stack" style={{ gap: 'var(--sp-1)' }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>{game.title}</span>
+                <span className="mono" style={{ fontSize: 13, color: 'var(--steam-400)' }}>
+                  {formatMoney(game.price, game.currency)}
+                </span>
+              </div>
+              <div className="row" style={{ gap: 'var(--sp-4)' }}>
+                <span className={statusBadgeClass(game.status)}>{game.status}</span>
+                {game.status !== 'DELISTED' && (
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => toggleStatus(game)}>
+                    {game.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

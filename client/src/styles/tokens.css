@@ -1,0 +1,82 @@
+:root {
+  --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+  --sp-24: 96px;
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --r-full: 999px;
+
+  --ember: #f2542d;
+  --ember-text-on: #12161f;
+  --teal: #2dd4bf;
+  --violet: #a78bfa;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --info: #60a5fa;
+
+  /* dark is the fallback default (no OS preference detected, no explicit toggle) */
+  --forge-black: #0b0e14;
+  --iron-900: #12161f;
+  --iron-800: #1a1f2b;
+  --iron-700: #262c3a;
+  --iron-600: #333b4d;
+  --steam-100: #f4f6fb;
+  --steam-400: #9aa3b8;
+  --steam-600: #5b6478;
+  --ember-dim: rgba(242, 84, 45, 0.22);
+}
+
+/* OS prefers light, no explicit toggle yet — wins the specificity tie because
+   it's declared after the base :root block above (same specificity, later wins) */
+@media (prefers-color-scheme: light) {
+  :root {
+    --forge-black: #eef0f5;
+    --iron-900: #ffffff;
+    --iron-800: #e7e9f0;
+    --iron-700: #d6dae3;
+    --iron-600: #c1c6d4;
+    --steam-100: #12161f;
+    --steam-400: #5b6478;
+    --steam-600: #8891a3;
+    --ember-dim: rgba(242, 84, 45, 0.14);
+  }
+}
+
+/* explicit user toggle always wins — higher specificity than plain :root,
+   regardless of source order or OS preference */
+:root[data-theme='dark'] {
+  --forge-black: #0b0e14;
+  --iron-900: #12161f;
+  --iron-800: #1a1f2b;
+  --iron-700: #262c3a;
+  --iron-600: #333b4d;
+  --steam-100: #f4f6fb;
+  --steam-400: #9aa3b8;
+  --steam-600: #5b6478;
+  --ember-dim: rgba(242, 84, 45, 0.22);
+}
+
+:root[data-theme='light'] {
+  --forge-black: #eef0f5;
+  --iron-900: #ffffff;
+  --iron-800: #e7e9f0;
+  --iron-700: #d6dae3;
+  --iron-600: #c1c6d4;
+  --steam-100: #12161f;
+  --steam-400: #5b6478;
+  --steam-600: #8891a3;
+  --ember-dim: rgba(242, 84, 45, 0.14);
+}

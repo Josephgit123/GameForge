@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+server/node_modules/
+client/node_modules/
+
+# env files — never commit real secrets
+.env
+.env.local
+server/.env
+client/.env
+
+# build output
+dist/
+build/
+server/dist/
+client/dist/
+
+# Prisma
+server/prisma/*.db
+server/generated/
+
+# logs
+npm-debug.log*
+*.log
+
+# editor/OS
+.DS_Store
+.vscode/
+.idea/
+Thumbs.db
