@@ -104,13 +104,14 @@ model Store {
 }
 
 model Game {
-  id          String     @id @default(uuid())
-  publisherId String
-  title       String
-  description String
-  price       Int
-  currency    String
-  status      GameStatus @default(DRAFT)
+  id             String     @id @default(uuid())
+  publisherId    String
+  title          String
+  description    String
+  price          Int
+  currency       String
+  status         GameStatus @default(DRAFT)
+  coverImageUrl  String?
 
   publisher      Publisher      @relation(fields: [publisherId], references: [id])
   orderItems     OrderItem[]

@@ -21,6 +21,7 @@ export function PublisherGames() {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [currency, setCurrency] = useState('USD');
+  const [coverImageUrl, setCoverImageUrl] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -43,10 +44,15 @@ export function PublisherGames() {
     }
     setSubmitting(true);
     try {
-      await api.post('/games', { title, description, price: priceMinorUnits, currency }, token);
+      await api.post(
+        '/games',
+        { title, description, price: priceMinorUnits, currency, coverImageUrl: coverImageUrl || undefined },
+        token
+      );
       setTitle('');
       setDescription('');
       setPrice('');
+      setCoverImageUrl('');
       setFormOpen(false);
       refresh();
     } catch (err) {
@@ -105,6 +111,17 @@ export function PublisherGames() {
               <input id="currency" required value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} />
             </div>
           </div>
+          <div className="field">
+            <label htmlFor="coverImageUrl">Cover image URL</label>
+            <input
+              id="coverImageUrl"
+              type="url"
+              placeholder="https://…"
+              value={coverImageUrl}
+              onChange={(e) => setCoverImageUrl(e.target.value)}
+            />
+            <span className="hint">Optional — shown on the storefront and game page. Leave blank for a placeholder.</span>
+          </div>
           <button type="submit" className="btn btn-primary" disabled={submitting} style={{ alignSelf: 'flex-start' }}>
             {submitting ? 'Creating…' : 'Create game (as draft)'}
           </button>
@@ -118,12 +135,26 @@ export function PublisherGames() {
       {games && games.length > 0 && (
         <div className="stack" style={{ gap: 'var(--sp-3)' }}>
           {games.map((game) => (
-            <div key={game.id} className="panel-card row" style={{ justifyContent: 'space-between' }}>
-              <div className="stack" style={{ gap: 'var(--sp-1)' }}>
-                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>{game.title}</span>
-                <span className="mono" style={{ fontSize: 13, color: 'var(--steam-400)' }}>
-                  {formatMoney(game.price, game.currency)}
-                </span>
+            <div key={game.id} className="panel-card row" style={{ justifyContent: 'space-between', gap: 'var(--sp-4)' }}>
+              <div className="row" style={{ gap: 'var(--sp-4)' }}>
+                <div
+                  className="cover"
+                  style={{
+                    width: 72,
+                    height: 40,
+                    borderRadius: 'var(--r-sm)',
+                    flexShrink: 0,
+                    backgroundImage: game.coverImageUrl ? `url(${game.coverImageUrl})` : undefined,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }}
+                />
+                <div className="stack" style={{ gap: 'var(--sp-1)' }}>
+                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>{game.title}</span>
+                  <span className="mono" style={{ fontSize: 13, color: 'var(--steam-400)' }}>
+                    {formatMoney(game.price, game.currency)}
+                  </span>
+                </div>
               </div>
               <div className="row" style={{ gap: 'var(--sp-4)' }}>
                 <span className={statusBadgeClass(game.status)}>{game.status}</span>

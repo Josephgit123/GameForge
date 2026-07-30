@@ -79,7 +79,13 @@ export function Layout() {
             ) : (
               <>
                 <Link to="/login" className="btn btn-ghost btn-sm">
-                  Log in
+                  Customer login
+                </Link>
+                <Link to="/publisher/login" className="btn btn-ghost btn-sm">
+                  Publisher login
+                </Link>
+                <Link to="/admin/login" className="btn btn-ghost btn-sm">
+                  Admin login
                 </Link>
                 <Link to="/signup" className="btn btn-primary btn-sm">
                   Sign up

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, ApiError } from '../lib/api';
-import type { AuthResponse, User } from '../lib/types';
+import type { AuthResponse, Role, User } from '../lib/types';
 
 const TOKEN_KEY = 'gameforge-token';
 
@@ -8,8 +8,19 @@ interface AuthContextValue {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (data: { email: string; password: string; firstName: string; lastName: string }) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  signup: (data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role?: Extract<Role, 'CUSTOMER' | 'PUBLISHER'>;
+  }) => Promise<User>;
+  loginWithGoogle: (
+    idToken: string,
+    allowSignup: boolean,
+    role?: Extract<Role, 'CUSTOMER' | 'PUBLISHER'>
+  ) => Promise<User>;
   logout: () => void;
 }
 
@@ -40,16 +51,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(TOKEN_KEY, res.token);
     setToken(res.token);
     setUser(res.user);
+    return res.user;
   }
 
   async function login(email: string, password: string) {
     const res = await api.post<AuthResponse>('/auth/login', { email, password });
-    persistSession(res);
+    return persistSession(res);
   }
 
-  async function signup(data: { email: string; password: string; firstName: string; lastName: string }) {
+  async function signup(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role?: Extract<Role, 'CUSTOMER' | 'PUBLISHER'>;
+  }) {
     const res = await api.post<AuthResponse>('/auth/signup', data);
-    persistSession(res);
+    return persistSession(res);
+  }
+
+  async function loginWithGoogle(
+    idToken: string,
+    allowSignup: boolean,
+    role?: Extract<Role, 'CUSTOMER' | 'PUBLISHER'>
+  ) {
+    const res = await api.post<AuthResponse>('/auth/google', { idToken, allowSignup, role });
+    return persistSession(res);
   }
 
   function logout() {
@@ -59,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, signup, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );

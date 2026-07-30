@@ -7,7 +7,7 @@ import type { Game } from '../lib/types';
 
 export function GameDetail() {
   const { id } = useParams<{ id: string }>();
-  const { user, token } = useAuth();
+  const { token } = useAuth();
   const navigate = useNavigate();
   const [game, setGame] = useState<Game | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,10 +28,6 @@ export function GameDetail() {
 
   async function onBuyNow() {
     if (!id) return;
-    if (!user) {
-      navigate('/login', { state: { from: { pathname: `/games/${id}` } } });
-      return;
-    }
     setCheckoutError(null);
     setStartingCheckout(true);
     try {
@@ -79,7 +75,17 @@ export function GameDetail() {
 
   return (
     <div className="page" style={{ maxWidth: 720 }}>
-      <div className="cover-hero" style={{ borderRadius: 'var(--r-lg)', height: 240, marginBottom: 'var(--sp-6)' }} />
+      <div
+        className="cover-hero"
+        style={{
+          borderRadius: 'var(--r-lg)',
+          height: 240,
+          marginBottom: 'var(--sp-6)',
+          ...(game.coverImageUrl
+            ? { backgroundImage: `url(${game.coverImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+            : {}),
+        }}
+      />
       <h1>{game.title}</h1>
       <p className="mono" style={{ fontSize: 20, color: 'var(--steam-100)', margin: 'var(--sp-3) 0 var(--sp-6)' }}>
         {formatMoney(game.price, game.currency)}

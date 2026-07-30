@@ -62,7 +62,7 @@ gamesRouter.post(
       return res.status(403).json({ error: 'Your publisher account is not yet approved' });
     }
 
-    const { title, description, price, currency } = req.body ?? {};
+    const { title, description, price, currency, coverImageUrl } = req.body ?? {};
     if (!title || !description || typeof price !== 'number' || !Number.isInteger(price) || !currency) {
       return res
         .status(400)
@@ -70,7 +70,15 @@ gamesRouter.post(
     }
 
     const game = await prisma.game.create({
-      data: { publisherId: publisher.id, title, description, price, currency, status: GameStatus.DRAFT },
+      data: {
+        publisherId: publisher.id,
+        title,
+        description,
+        price,
+        currency,
+        coverImageUrl: coverImageUrl || null,
+        status: GameStatus.DRAFT,
+      },
     });
     res.status(201).json({ game });
   })
@@ -95,7 +103,7 @@ gamesRouter.patch(
       }
     }
 
-    const { title, description, price, currency, status } = req.body ?? {};
+    const { title, description, price, currency, status, coverImageUrl } = req.body ?? {};
 
     if (status !== undefined) {
       const allowedForRole =
@@ -113,6 +121,7 @@ gamesRouter.patch(
         ...(price !== undefined && { price }),
         ...(currency !== undefined && { currency }),
         ...(status !== undefined && { status }),
+        ...(coverImageUrl !== undefined && { coverImageUrl: coverImageUrl || null }),
       },
     });
     res.json({ game: updated });

@@ -150,6 +150,41 @@ Confirm the server is up on `http://localhost:4000` (or your `PORT`) and
 the client on `http://localhost:5173` (Vite default), and that
 `CORS_ORIGIN` / `VITE_API_BASE_URL` match each other.
 
+## 10. Set up Google sign-in (Firebase)
+
+Optional — the app works fine without this, the "Continue with Google"
+button just doesn't render on the login pages until it's configured.
+
+1. Go to the [Firebase console](https://console.firebase.google.com) and
+   create a new project (or reuse an existing one).
+2. In the project, go to **Build > Authentication > Sign-in method** and
+   enable the **Google** provider.
+3. Get the **client config** (public, safe to ship in the bundle): Project
+   Settings (gear icon) > General > "Your apps" > add a **Web app** if you
+   haven't already > SDK setup and configuration > **Config**. Copy:
+   - `apiKey` → `VITE_FIREBASE_API_KEY`
+   - `authDomain` → `VITE_FIREBASE_AUTH_DOMAIN`
+   - `projectId` → `VITE_FIREBASE_PROJECT_ID`
+   - `appId` → `VITE_FIREBASE_APP_ID`
+
+   into `client/.env`.
+4. Get the **service account** (secret, server-only): Project Settings >
+   **Service accounts** tab > **Generate new private key**. This downloads a
+   JSON file. From it, copy into `server/.env`:
+   - `project_id` → `FIREBASE_PROJECT_ID`
+   - `client_email` → `FIREBASE_CLIENT_EMAIL`
+   - `private_key` → `FIREBASE_PRIVATE_KEY` (keep the quotes and the literal
+     `\n` sequences exactly as they appear in the JSON — don't reformat it
+     into real newlines)
+5. **Never commit that JSON file or its contents anywhere** — delete the
+   downloaded file once you've copied the three values out, or keep it
+   outside the repo.
+6. Restart both dev servers after editing the `.env` files (Vite and
+   `tsx watch` only read them at startup).
+
+If these vars are missing, the client hides the Google button and the
+server's `POST /auth/google` responds `503` instead of failing to boot.
+
 ---
 
 ## Common setup errors

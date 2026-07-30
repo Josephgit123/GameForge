@@ -4,8 +4,9 @@ import { Layout } from './components/Layout';
 import { RequireRole } from './components/RequireRole';
 import { Storefront } from './pages/Storefront';
 import { GameDetail } from './pages/GameDetail';
-import { Login } from './pages/Login';
+import { CustomerLogin, PublisherLogin, AdminLogin } from './pages/Login';
 import { Signup } from './pages/Signup';
+import { PublisherSignup } from './pages/PublisherSignup';
 import { PublisherGames } from './pages/PublisherGames';
 import { OrderConfirmation } from './pages/OrderConfirmation';
 import { OrderHistory } from './pages/OrderHistory';
@@ -20,10 +21,13 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Storefront />} />
-          <Route path="/games/:id" element={<GameDetail />} />
-          <Route path="/login" element={<Login />} />
+          <Route path="/login" element={<CustomerLogin />} />
+          <Route path="/publisher/login" element={<PublisherLogin />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/signup" element={<Signup />} />
-          <Route element={<RequireRole />}>
+          <Route path="/publisher/signup" element={<PublisherSignup />} />
+          <Route element={<RequireRole roles={['CUSTOMER']} />}>
+            <Route path="/games/:id" element={<GameDetail />} />
             <Route path="/orders" element={<OrderHistory />} />
             <Route path="/orders/:orderId/confirmation" element={<OrderConfirmation />} />
           </Route>

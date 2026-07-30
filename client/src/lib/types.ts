@@ -20,6 +20,7 @@ export interface Game {
   price: number;
   currency: string;
   status: GameStatus;
+  coverImageUrl: string | null;
 }
 
 export interface AuthResponse {

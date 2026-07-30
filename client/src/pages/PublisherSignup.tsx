@@ -6,7 +6,7 @@ import { GoogleSignInButton } from '../components/GoogleSignInButton';
 import { ApiError } from '../lib/api';
 import { signInWithGoogle } from '../lib/firebase';
 
-export function Signup() {
+export function PublisherSignup() {
   const { signup, loginWithGoogle, logout } = useAuth();
   const navigate = useNavigate();
   const [firstName, setFirstName] = useState('');
@@ -22,8 +22,8 @@ export function Signup() {
     setError(null);
     setSubmitting(true);
     try {
-      await signup({ email, password, firstName, lastName });
-      navigate('/', { replace: true });
+      await signup({ email, password, firstName, lastName, role: 'PUBLISHER' });
+      navigate('/publisher/games', { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Try again.');
     } finally {
@@ -36,13 +36,13 @@ export function Signup() {
     setGoogleSubmitting(true);
     try {
       const idToken = await signInWithGoogle();
-      const user = await loginWithGoogle(idToken, true, 'CUSTOMER');
-      if (user.role !== 'CUSTOMER') {
+      const user = await loginWithGoogle(idToken, true, 'PUBLISHER');
+      if (user.role !== 'PUBLISHER') {
         logout();
         setError(`That Google account already has a ${user.role.toLowerCase()} account. Use the ${user.role.toLowerCase()} login instead.`);
         return;
       }
-      navigate('/', { replace: true });
+      navigate('/publisher/games', { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Google sign-in failed. Try again.');
     } finally {
@@ -52,9 +52,10 @@ export function Signup() {
 
   return (
     <div className="page" style={{ maxWidth: 420 }}>
-      <h1 style={{ marginBottom: 'var(--sp-2)' }}>Create your account</h1>
+      <h1 style={{ marginBottom: 'var(--sp-2)', color: 'var(--teal)' }}>Publisher sign up</h1>
       <p style={{ color: 'var(--steam-400)', marginBottom: 'var(--sp-8)' }}>
-        Selling games instead? <Link to="/publisher/signup">Sign up as a publisher</Link>.
+        Creates your publisher account. Surfboard merchant onboarding (KYB) is a separate step your account will
+        show as pending until it's completed.
       </p>
       <form onSubmit={onSubmit} className="stack" style={{ gap: 'var(--sp-4)' }}>
         {error && <div className="form-error-banner">{error}</div>}
@@ -105,7 +106,7 @@ export function Signup() {
       <GoogleSignInButton onClick={onGoogleClick} submitting={googleSubmitting} label="Sign up with Google" />
 
       <p style={{ marginTop: 'var(--sp-6)', fontSize: 14, color: 'var(--steam-400)' }}>
-        Already have an account? <Link to="/login">Log in</Link>
+        Already have an account? <Link to="/publisher/login">Log in</Link>
       </p>
     </div>
   );
