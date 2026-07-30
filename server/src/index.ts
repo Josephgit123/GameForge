@@ -10,6 +10,7 @@ import { refundsRouter } from './routes/refunds';
 import { giftCardsRouter } from './routes/giftcards';
 import { promotionsRouter } from './routes/promotions';
 import { analyticsRouter } from './routes/analytics';
+import { libraryRouter } from './routes/library';
 
 const app = express();
 const port = process.env.PORT ?? 4000;
@@ -37,6 +38,7 @@ app.use('/refunds', refundsRouter);
 app.use('/gift-cards', giftCardsRouter);
 app.use('/promotions', promotionsRouter);
 app.use('/analytics', analyticsRouter);
+app.use('/library', libraryRouter);
 
 app.get('/health/db', async (_req, res) => {
   try {

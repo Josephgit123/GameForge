@@ -231,11 +231,21 @@ Reuses `createOrder()`, same as checkout.
   `webhooks.ts#handlePaymentCompleted`).
 - **Confirmed real business rule (`OR_0035`):** Surfboard refuses to refund
   an order whose status on *their* side isn't completed — `"Cannot refund
-  from purchase order that is not completed. Status: PENDING"`. This fired
-  live in testing because our test order was only marked `PAID` locally via
-  a simulated webhook, never actually completed on Surfboard's side (same
-  root cause as the missing test-card gap in Phase 3). Confirms the refund
-  code is correctly checking against Surfboard's real state, not a bug.
+  from purchase order that is not completed. Status: PENDING"`. Seen two
+  distinct ways in testing, both confirming the refund code is correctly
+  checking Surfboard's real state, not a bug in our code:
+  1. Our local order was only marked `PAID` via a simulated webhook, never
+     actually completed on Surfboard's side (same root cause as the missing
+     test-card gap in Phase 3).
+  2. **(2026-07-30, genuinely real card charge)** A real Mastercard sandbox
+     purchase completed (`orderStatus: PAYMENT_COMPLETED`, `voided: false`)
+     and still hit `OR_0035` on refund. The order's `settlementStatus` was
+     `"NOT_SETTLED"` — Surfboard only allows refunding a transaction that
+     has actually **settled**, which is a separate batch step (often hours
+     or overnight) distinct from authorization/completion. A same-day
+     sandbox test charge won't have settled yet, so refund approval on it
+     will keep failing regardless of retries. Known gap for demo day — see
+     DEMO_SCRIPT.md's Phase 5 fallback.
 - **Two real bugs found and fixed while testing this:**
   1. Surfboard sometimes returns business-logic errors as **HTTP 200** with
      `{status: "ERROR", message}` and no `data` field — not just via

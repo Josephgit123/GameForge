@@ -54,6 +54,14 @@ export interface Order {
   refunds: Refund[];
 }
 
+export interface LibraryEntry {
+  id: string;
+  gameId: string;
+  orderId: string;
+  acquiredAt: string;
+  game: Game;
+}
+
 export interface RefundQueueEntry extends Refund {
   order: Order & { customer: { email: string } };
 }

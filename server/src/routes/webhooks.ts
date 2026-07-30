@@ -58,7 +58,7 @@ webhooksRouter.post('/surfboard', async (req, res) => {
   }
 });
 
-async function handlePaymentCompleted(data: PaymentCompletedData) {
+export async function handlePaymentCompleted(data: PaymentCompletedData) {
   const order = await prisma.order.findFirst({
     where: { surfboardOrderId: data.orderId },
     include: { items: true },
@@ -84,9 +84,16 @@ async function handlePaymentCompleted(data: PaymentCompletedData) {
 }
 
 async function handleOriginalOrderCompleted(
-  order: { id: string; customerId: string; items: { gameId: string }[] },
+  order: { id: string; status: OrderStatus; customerId: string; items: { gameId: string }[] },
   data: PaymentCompletedData
 ) {
+  // Belt-and-suspenders alongside the WebhookEvent id dedup above — this
+  // guards against reprocessing the same order via two different event ids
+  // (e.g. a manual reconciliation followed by a late real webhook retry).
+  if (order.status === OrderStatus.PAID) {
+    return;
+  }
+
   const giftCardRedemption = await prisma.giftCardRedemption.findUnique({ where: { orderId: order.id } });
 
   await prisma.$transaction(async (tx) => {

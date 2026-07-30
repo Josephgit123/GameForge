@@ -10,6 +10,7 @@ import { PublisherSignup } from './pages/PublisherSignup';
 import { PublisherGames } from './pages/PublisherGames';
 import { OrderConfirmation } from './pages/OrderConfirmation';
 import { OrderHistory } from './pages/OrderHistory';
+import { MyGames } from './pages/MyGames';
 import { AdminRefunds } from './pages/AdminRefunds';
 import { AdminGiftCards } from './pages/AdminGiftCards';
 import { AdminPromotions } from './pages/AdminPromotions';
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/publisher/signup" element={<PublisherSignup />} />
           <Route element={<RequireRole roles={['CUSTOMER']} />}>
             <Route path="/games/:id" element={<GameDetail />} />
+            <Route path="/library" element={<MyGames />} />
             <Route path="/orders" element={<OrderHistory />} />
             <Route path="/orders/:orderId/confirmation" element={<OrderConfirmation />} />
           </Route>

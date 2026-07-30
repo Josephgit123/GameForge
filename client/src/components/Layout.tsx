@@ -16,6 +16,11 @@ export function Layout() {
             <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
               Storefront
             </NavLink>
+            {user?.role === 'CUSTOMER' && (
+              <NavLink to="/library" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+                My Games
+              </NavLink>
+            )}
             {user && (
               <NavLink to="/orders" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
                 My Orders

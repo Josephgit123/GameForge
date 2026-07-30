@@ -140,6 +140,7 @@ refundsRouter.patch(
       res.json({ refund: updated });
     } catch (err) {
       if (err instanceof SurfboardApiError) {
+        console.error('Refund creation failed:', err.status, JSON.stringify(err.body));
         return res.status(502).json({ error: 'Could not create the refund with the payment provider', detail: err.body });
       }
       throw err;

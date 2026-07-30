@@ -182,10 +182,22 @@ Surfboard directly."
 
 **If it fails live:** Refund API call errors, or its confirmation webhook
 is slow/missing.
-- **Fallback:** same replay-webhook approach as Phase 4. If the Refund API
-  itself is erroring, show the approval step completing locally (refund
-  marked `APPROVED` in-app) and narrate that the Surfboard-side call would
-  fire next, pointing at the code path rather than faking a success state.
+- **Confirmed root cause (2026-07-30):** Surfboard rejects the refund with
+  `OR_0035: Cannot refund from purchase order that is not completed. Status:
+  PENDING`, even though the original card purchase shows `PAYMENT_COMPLETED`.
+  The actual blocker is `settlementStatus: "NOT_SETTLED"` on the original
+  transaction — Surfboard only allows refunding a *settled* transaction, and
+  settlement is a separate batch step that doesn't happen same-day in this
+  sandbox. This isn't a bug in our code; it's an external timing constraint,
+  same category as the missing test card (see API_INTEGRATION.md).
+- **Fallback:** don't fake a success state. Show the request → approval UI
+  flow (customer requests, admin/publisher approves in-app), then narrate
+  the constraint directly: "Approving here fires a real Refund API call —
+  Surfboard requires the original charge to be settled first, which is a
+  separate batch process that hasn't run yet for a same-day test charge.
+  In production this completes automatically once settlement clears."
+  Point at the refund code path (`server/src/routes/refunds.ts`) rather than
+  demoing a live success.
 
 ---
 
