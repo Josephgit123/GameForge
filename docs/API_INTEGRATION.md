@@ -6,14 +6,24 @@ why. Nothing in this doc should be implemented against ad-hoc `fetch` calls
 elsewhere in the codebase.
 
 <a id="auth"></a>
-## Auth (unconfirmed — do not guess)
+## Auth (confirmed)
 
-CLAUDE.md is explicit: **confirm the exact request auth header format (API
-key + secret) against the Postman collection / API reference in the
-Developer Portal Console before implementing the wrapper.** This doc does
-not specify a header scheme because CLAUDE.md doesn't either. Whatever is
-confirmed should be documented here and implemented in exactly one place
-(`surfboard.ts`).
+Three literal headers, verified against Surfboard's own API reference and a
+real live call:
+
+```
+Content-Type: application/json
+API-KEY: <api key>
+API-SECRET: <api secret>
+```
+
+`MERCHANT-ID` is added as a fourth header only for merchant-scoped calls
+(Orders, Payments) once a `merchantId` exists — Create Merchant itself is
+partner-scoped and doesn't send it. Implemented in exactly one place,
+`server/src/services/surfboard.ts`.
+
+Base API URL (same for Demo and Live — the key/secret pair determines which
+environment you hit, not the URL): `https://carbon.surfgw.com/api`.
 
 ---
 
@@ -120,78 +130,222 @@ the scenes.
 
 ### Orders API
 
-- **Endpoint:** `POST /merchants/:merchantId/orders`
+**Confirmed live, corrections to the endpoint path:** the actual API does
+not nest orders under `/merchants/:merchantId/orders` (that 404s) — it's a
+flat `POST /orders`, with `MERCHANT-ID` sent only as a header, same as every
+other merchant-scoped call. `GET /orders/:orderId/status` is flat the same
+way. This is exactly what `server/src/services/surfboard.ts` implements;
+CLAUDE.md's original endpoint sketch was wrong on this one detail.
+
+- **Prerequisite — terminal:** an order is created against a `terminal$id`.
+  A terminal must be registered first via
+  `POST /merchants/:merchantId/stores/:storeId/online-terminals` with
+  `{ "onlineTerminalMode": "PaymentPage" }` — confirmed live, returns a
+  `terminalId`. Register once per store and cache the ID (re-registering
+  isn't idempotent — it mints a new terminal each time).
+- **Endpoint:** `POST /orders` (`MERCHANT-ID` header only, not in the path)
 - **Triggered by:** customer clicking "Checkout."
 - **Before calling:** compute `Order.totalAmount` locally — apply promotion
   discount and gift card coverage first, so the amount sent to Surfboard is
   already final.
-- **Response fields stored:** `surfboardOrderId` → `Order.surfboardOrderId`.
+- **Currency gotcha, confirmed live:** Surfboard wants the **numeric ISO
+  4217 code** (`"752"` for SEK), not an alpha code (`"USD"` fails with
+  `OR_0004: currency code is not associated with this merchant`) — and it
+  must match whatever currency the merchant's country/acquirer config
+  supports. Our demo merchant is Swedish (`country: "SE"`), so it's SEK-only.
+  This is a real mismatch with `Game.currency` in our schema (currently
+  seeded as the string `"USD"`) that needs resolving before real checkout
+  can run — either reseed demo games in SEK, or add a currency-code mapping
+  layer in `surfboard.ts`.
+- **Response fields stored:** `orderId` → `Order.surfboardOrderId`.
 
-### Payment Page + Payments API
+### Payment Page
+
+**Confirmed live — simpler than originally documented:** for a
+`PaymentPage`-mode terminal, the Create Order response includes
+**`paymentPageLink` directly** — there is no separate Initiate Payment call
+in this flow. `POST /payments` (Initiate Payment) exists in Surfboard's API
+but is for a different path (e.g. charging a saved token) and isn't part of
+GameForge's checkout.
 
 - **Triggered by:** immediately after order creation succeeds — server
-  hands the client a hosted Payment Page redirect URL.
+  hands the client `paymentPageLink` to redirect to.
 - **On redirect return:** do **not** trust the redirect alone (a user can
   navigate back/forward or the browser tab can close). Confirm the actual
-  payment result server-side via the Payments API status call or, more
+  payment result server-side via `GET /orders/:orderId/status` or, more
   reliably, wait for the webhook.
-- **Response fields stored:** `surfboardPaymentId` → `Payment.surfboardPaymentId`,
-  `status` → `Payment.status`.
+- **Response fields stored:** once the order completes, `Payment.status` is
+  set from the order status response's `payments[].paymentStatus`;
+  `Payment.surfboardPaymentId` from `payments[].paymentId`.
 
 ### Webhooks
 
-- **Triggered by:** Surfboard, asynchronously, for order/payment/merchant/refund
-  status changes.
-- **Handler must, in order:** verify signature → idempotency check against
-  `WebhookEvent` (see [DATABASE.md](DATABASE.md#idempotency-pattern)) → apply
-  state change → mark `WebhookEvent.processedAt`.
-- **Fields stored:** raw payload → `WebhookEvent.payload`; `eventType` and
-  the referenced entity ID → `WebhookEvent.surfboardReferenceId`; then
-  whatever the specific event implies (e.g. `PAYMENT_COMPLETED` → see the
-  post-payment sequence below).
+**Confirmed live** (built and tested end-to-end in
+`server/src/routes/webhooks.ts`, including a self-signed test payload):
+
+- **Endpoint:** `POST /webhooks/surfboard`
+- **Signature:** header `x-webhook-signature`, value = HMAC-SHA512 of the
+  *raw* request body string (not the parsed/re-serialized JSON), keyed with
+  the webhook secret from the Console, base64-encoded. Verified with
+  `timingSafeEqual` in `server/src/lib/webhookSignature.ts`. Express's
+  `express.json({ verify })` hook captures the raw bytes onto `req.rawBody`
+  before parsing — this has to happen before the idempotency check, or an
+  unverified payload could poison the database.
+- **Idempotency key:** `metadata.eventId` from the payload → `WebhookEvent.surfboardEventId`
+  (`@unique` in the schema) — see [DATABASE.md](DATABASE.md#idempotency-pattern).
+  Tested live: resending the identical event returns `{"status":"already processed"}`
+  and makes zero additional DB writes.
+- **Event type for payment completion:** `order.paymentcompleted` (not
+  `PAYMENT_COMPLETED` — that's the *status* value inside the payload, e.g.
+  `data.paymentStatus`). CLAUDE.md's phrasing was a simplification.
+- **Fields stored:** raw payload → `WebhookEvent.payload`; `eventType` →
+  `WebhookEvent.eventType`; `data.orderId` → `WebhookEvent.surfboardReferenceId`.
+- **Must set up in the Console before it works for real:** the endpoint
+  needs a publicly reachable URL (a local tunnel like ngrok in dev) to
+  register in the Surfboard Console's webhook config, which is what actually
+  issues the real signing secret — see [SETUP.md](SETUP.md). Everything
+  above was verified with a locally-generated test secret and a hand-signed
+  payload, not a live webhook delivery yet.
 
 ### Refund API
+
+**Confirmed live, built and tested in `server/src/routes/refunds.ts`.**
+There's no dedicated Refunds API — a refund is **a new order**, with
+negative `quantity`/`amount.total` per line and each line's
+`purchaseOrderId` pointing back at the original order's `surfboardOrderId`.
+Reuses `createOrder()`, same as checkout.
 
 - **Triggered by:** only after a customer's refund request has been
   approved in-app by an Admin or the owning Publisher — Surfboard is never
   called on the customer's request alone.
-- **Response fields stored:** `surfboardRefundId` → `Refund.surfboardRefundId`,
-  `status` → `Refund.status`. A `REFUND_COMPLETED`-style webhook (exact
-  event name **(proposed — confirm)**) should confirm completion the same
-  way `PAYMENT_COMPLETED` does for orders — don't mark a refund complete
-  purely off the synchronous API response.
+- **Request:** `POST /orders` (same flat endpoint as checkout) with
+  `controlFunctions.initiatePaymentsOptions.paymentMethod: "CARD_NP"` (the
+  recommended refund method for an original `CARD` payment — confirmed in
+  `web-guides/refund-an-order.md`) and `callBackUrl` set the same way as a
+  normal checkout order, for webhook confirmation.
+- **Response fields stored:** the refund order's own `orderId` →
+  `Refund.surfboardRefundId`. This is a *different* Surfboard order ID than
+  the original purchase — the webhook receiver has to check both `Order`
+  and `Refund` by `surfboardOrderId`/`surfboardRefundId` to know which one
+  a given `order.paymentcompleted` event belongs to (see
+  `webhooks.ts#handlePaymentCompleted`).
+- **Confirmed real business rule (`OR_0035`):** Surfboard refuses to refund
+  an order whose status on *their* side isn't completed — `"Cannot refund
+  from purchase order that is not completed. Status: PENDING"`. This fired
+  live in testing because our test order was only marked `PAID` locally via
+  a simulated webhook, never actually completed on Surfboard's side (same
+  root cause as the missing test-card gap in Phase 3). Confirms the refund
+  code is correctly checking against Surfboard's real state, not a bug.
+- **Two real bugs found and fixed while testing this:**
+  1. Surfboard sometimes returns business-logic errors as **HTTP 200** with
+     `{status: "ERROR", message}` and no `data` field — not just via
+     non-2xx status codes. `surfboard.ts`'s `request()` now checks
+     `body.status === 'ERROR'` in addition to `!res.ok`, so callers never
+     get a silently-undefined `data`.
+  2. A caught-but-rethrown unexpected error in the refund route crashed the
+     **entire server process**, not just that request, since there was no
+     global Express error handler and Express 4 doesn't auto-catch async
+     rejections. Added `asyncHandler` (`server/src/lib/asyncHandler.ts`) —
+     now applied to every route — plus a catch-all error middleware in
+     `index.ts`.
+- Refund timelines by method (from the same guide): card refunds take up to
+  7 days, Swish/Vipps are instant, MobilePay up to 10 banking days, Klarna
+  up to 10 days. Refunds can only be issued within 90 days of purchase —
+  enforced by Surfboard, not us.
 
 ### Gift Card API
 
+**Confirmed live, built and tested in `server/src/routes/giftcards.ts` and
+`checkout.ts`, up to one real blocker described below.**
+
+- **Endpoint:** `POST /giftcards` (merchant-scoped — `MERCHANT-ID` header,
+  no path segment, same convention as Orders/Payments/Refunds).
 - **Triggered by:** Admin issuing a new gift card.
-- **Response fields stored:** `surfboardGiftCardId` → `GiftCard.surfboardGiftCardId`.
-  The redemption `code` shown to customers is generated and stored locally
-  (format **(proposed — confirm)**, not specified in CLAUDE.md).
+- **Response fields stored:** `data.giftCardId` → `GiftCard.surfboardGiftCardId`;
+  `data.pan` → `GiftCard.code` (Surfboard's own generated card number is
+  used directly as the customer-facing redemption code, rather than
+  generating a separate local one).
+- **Amount units — confirmed live, contradicts the doc's own example:**
+  Surfboard's Gift Card API doc shows `"amount": 100.00` as if it's a
+  decimal. Following that literally created a card whose real balance,
+  visible on its customer-facing shareable link, was **100x smaller** than
+  intended (dividing our minor-units amount by 100 before sending meant the
+  system then treated the result as minor units *again*). Fixed by sending
+  the amount directly in minor units, matching every other money field in
+  Surfboard's system — don't trust the decimal example in their docs.
 - **Redemption (customer, at checkout):** v1 constraint — a gift card must
   fully cover the order total or it isn't applied at all; no partial-split
-  between gift card and card payment yet. Balance deduction is only
-  *finalized* on payment success (step 4 of the post-payment sequence) —
-  don't decrement `currentBalance` at the moment of applying the code,
-  only once the order actually completes, to avoid stranding balance on an
-  abandoned checkout.
+  between gift card and card payment yet. Implemented via `initiatePayment`
+  with `paymentMethod: 'GIFTCARD'` right after `createOrder`, skipping the
+  hosted Payment Page redirect entirely (no card entry needed when a gift
+  card covers the whole order). Balance deduction is only *finalized* on
+  webhook confirmation, not when the code is applied at checkout — avoids
+  stranding balance on an abandoned checkout.
+- **Known gap — cards can't actually be redeemed yet:** every gift card
+  Surfboard creates starts in a `CREATED` status, and their Payments API
+  refuses `GIFTCARD` payment against anything that isn't `ACTIVE`
+  (`PS_0025: Gift card is not active. Current status: CREATED`). Checked
+  for a path to `ACTIVE`: no activation endpoint among the 4 Gift Cards API
+  routes, no action on the card's own customer-facing shareable link (its
+  "How to Redeem" button just shows generic in-store instructions), and no
+  control in the Partner Portal Console either. This is the same class of
+  gap as Phase 3's missing test card — the integration code is correct and
+  reaches Surfboard for real, but full end-to-end redemption can't be
+  live-tested until this is resolved (possibly requires contacting
+  Surfboard support, same as the missing test card).
 
 ### Promotion API
 
-- **Triggered by:** Admin creating a promotion (code, discount type/value,
-  validity window, usage limit — all stored locally, plus whatever ID
-  Surfboard's Promotion API returns).
-- **Response fields stored:** `surfboardPromotionId` → `Promotion.surfboardPromotionId`.
-- **Checkout-time validation:** re-validate active/unexpired/under-limit at
-  order-creation time, not just when the code was first displayed to the
-  customer — a promo can expire or hit its usage limit between page load
-  and checkout.
+**Confirmed live: there is no real Surfboard equivalent for this feature.**
+Surfboard's actual Promotions API (`POST /merchants/:mId/stores/:sId/promotions`)
+is a **marketing-banner display system** — title, image URL, background
+color, button label, priority, and a `type` of `RECEIPT_BIG` / `RECEIPT_SMALL`
+/ `IDLE_BIG_SPOT` / `OTHER_SCREEN`. No discount value, no customer-facing
+code, no usage limit. It's also marked `comingSoon: true` in the doc — may
+not even be live yet. This directly contradicts CLAUDE.md's original
+assumption ("Store code, discount type/value, validity window, usage limit
+locally"). **Decision (confirmed with the project owner):** promotions are
+implemented as a **local-only feature** — `Promotion.surfboardPromotionId`
+is nullable and stays `null`, no Surfboard call happens at all for this
+feature. Everything else CLAUDE.md describes (discount codes, validity
+window, usage limit) is real, tested, working business logic — just
+entirely on our side.
+
+- **Triggered by:** Admin creating a promotion (code, type `PERCENTAGE` or
+  `FIXED_AMOUNT`, value, validity window, usage limit — all local).
+- **Checkout-time validation:** re-validated at order-creation time in
+  `checkout.ts`, not just when the code was first displayed — checks
+  `startsAt`/`endsAt` against the current time, and counts existing
+  `PromotionUsage` rows **where the linked `Order.status` is `PAID`**
+  against `usageLimit` (a `PromotionUsage` row is created at checkout time,
+  same pattern as gift card redemptions, but only counts toward the limit
+  once the order actually completes — an abandoned checkout shouldn't burn
+  a usage slot).
+- **Confirmed live (`OR_0037: Invalid total order price`):** Surfboard's
+  Create Order validates that `totalOrderAmount.total` reconciles with the
+  order lines. A discounted total with no explanation for the difference
+  is rejected outright — the discount has to be expressed via
+  `totalOrderAmount.campaign`, with `regular - campaign = total`. Order
+  lines themselves keep their undiscounted per-game price (matching
+  `OrderItem.priceAtPurchase`'s historical-record purpose); the discount is
+  represented once, at the order level.
 
 ---
 
 ## Merchant onboarding sequence (detailed)
 
+**Prerequisite — billing plan:** Create Merchant fails with `"Partner has
+none or more than one plan"` unless the partner account has exactly one
+billing plan, or `controlFields.transactionPricingPlan` names one explicitly.
+Confirmed live: our sandbox partner started with zero plans, so one had to
+be created first via `POST /partners/{partnerId}/billing-plans` (see
+`createBillingPlans` in `surfboard.ts`) before Create Merchant would succeed.
+This isn't documented anywhere in CLAUDE.md — it's a real account-state
+requirement discovered by actually running the call.
+
 1. User submits "Register as Publisher" → server calls Merchant API
-   `POST /partners/{partnerId}/merchants`.
+   `POST /partners/{partnerId}/merchants` with `controlFields.transactionPricingPlan`
+   set to the partner's billing plan id.
 2. Response returns `applicationId` and `webKybUrl`. Server creates a
    `Publisher` row with `surfboardApplicationId` set, `surfboardMerchantId`
    still null, `status = PENDING`. Client redirects the user to
@@ -199,7 +353,10 @@ the scenes.
 3. Server polls `GET /partners/{partnerId}/merchants/{applicationId}/status`
    (interval **(proposed — confirm)**, not specified in CLAUDE.md — a
    webhook for the same transition may arrive first and should short-circuit
-   the poll) until the status reaches `MERCHANT_CREATED`.
+   the poll) until the status reaches `MERCHANT_CREATED`. Confirmed live:
+   immediately after Create Merchant, status is `APPLICATION_INITIATED` —
+   the KYB form at `webKybUrl` still has to actually be submitted before
+   anything progresses further.
 4. On `MERCHANT_CREATED`: response includes `merchantId` and `storeId`.
    Server writes `surfboardMerchantId` onto `Publisher` and creates the
    default `Store` row with `surfboardStoreId`.
@@ -212,8 +369,25 @@ the scenes.
 
 ### KYB timing constraint and the demo fallback
 
-Real KYB review takes **3-4 business days** — far longer than the 2-3 day
-build window or the 5-minute demo. Strategy:
+**Confirmed live, end-to-end, 2026-07-29:** created a real merchant
+application (`applicationId: 844d37b4808f100710`), completed its KYB form
+(skipping the bank-details step — see "Bank details are skippable" below),
+and it reached `MERCHANT_CREATED` shortly after submission — no multi-day
+wait. This matches Surfboard's own API reference: **"Merchant applications
+in test and demo environments are configured for automatic approval."** So
+the 3-4 business day review CLAUDE.md warns about is a production-KYB
+number — in the sandbox, once the KYB form is actually submitted, it clears
+fast. The resulting real `merchantId`/`storeId` from this run are now what
+`SURFBOARD_DEMO_FALLBACK_MERCHANT_ID`/`STORE_ID` point to (see
+[.env.example](../.env.example) and `server/.env`).
+
+**Bank details are skippable.** Surfboard's own onboarding guide
+(bundled in the `@surfboardpayments/surf-mcp` package,
+`data/guides/in-store-payments/onboard-your-merchants/completing-your-kyb-url-application.md`)
+states the Bank Information step (IBAN/BIC + a bank statement upload) can be
+skipped — "bank details will be requested later via a separate link." This
+is what let the demo fallback merchant get created without needing any real
+banking details.
 
 - The registration flow above is implemented for real and does fire a real
   Create Merchant call live during the demo (step 1 of the
@@ -239,26 +413,25 @@ build window or the 5-minute demo. Strategy:
 
 ## Post-payment-success sequence (step by step)
 
-Fires on a confirmed `PAYMENT_COMPLETED` webhook. Must run atomically —
-wrap steps 2-5 in a single DB transaction.
+Fires on an `order.paymentcompleted` webhook. Steps 2-3 run inside one
+`prisma.$transaction` in `server/src/routes/webhooks.ts` — **confirmed live**
+end-to-end (real checkout → simulated signed webhook → verified all rows
+below landed correctly, and that a resend was a no-op).
 
-1. **Idempotency check** against `WebhookEvent` — if this event was already
-   processed, no-op and return 200 immediately. See
-   [DATABASE.md](DATABASE.md#idempotency-pattern).
-2. **Update status** — `Order.status` and `Payment.status` both move to
-   their completed values.
-3. **Create `LibraryEntry` rows** — one per `OrderItem` in the order, so
-   the customer's library reflects every game just purchased.
-4. **Finalize gift card deduction** — if a `GiftCardRedemption` row exists
-   for this order, decrement `GiftCard.currentBalance` by
-   `amountApplied` now (not earlier — see the Gift Card API notes above).
-5. **Increment `PromotionUsage`** — if a promo was used on this order,
-   record the usage row now, counting it against `usageLimit`.
+1. **Idempotency check** against `WebhookEvent.surfboardEventId` — if this
+   event was already processed, no-op and return 200 immediately. ✅ built.
+2. **Update status** — `Order.status` → `PAID`; a `Payment` row is created
+   here (not earlier — Create Order doesn't return a `paymentId` up front
+   for a PaymentPage terminal, only the webhook does). ✅ built.
+3. **Create `LibraryEntry` rows** — one per `OrderItem` in the order. ✅ built.
+4. **Finalize gift card deduction** — **not built yet** (Phase 4, no
+   `GiftCard`/`GiftCardRedemption` write path exists yet).
+5. **Increment `PromotionUsage`** — **not built yet** (Phase 4).
 6. **Push status to the customer's UI** — the client's short-poll against
-   the order-status endpoint will pick up the new `Order.status` on its
-   next tick (1-2s interval); no separate push mechanism is required unless
-   a WebSocket/SSE upgrade is built.
+   `GET /checkout/:orderId/status` picks up the new `Order.status`; this
+   endpoint reads the local DB only, it doesn't call Surfboard. ✅ built.
 7. **Publisher revenue updates automatically** — no separate write needed;
-   revenue is always derived from `Order`/`OrderItem` at read time.
-8. **Mark `WebhookEvent.processedAt`** — commits the idempotency lock,
-   ideally in the same transaction as steps 2-5.
+   revenue is always derived from `Order`/`OrderItem` at read time. Still
+   true, though the actual publisher revenue *page* isn't built yet.
+8. **Mark `WebhookEvent.processedAt`** — commits the idempotency lock, in
+   the same handler after the transaction succeeds. ✅ built.

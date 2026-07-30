@@ -11,9 +11,20 @@ actually ships with and update this doc to match.
 and its merchant is actually KYB-approved in the Surfboard sandbox — the
 whole demo after step 1 depends on it (see
 [API_INTEGRATION.md](API_INTEGRATION.md#kyb-timing-constraint-and-the-demo-fallback)).
-Also confirm the webhook tunnel (ngrok or equivalent) is live and
-registered, and that seed data (admin, publisher, customer, a couple of
-unpublished games) is loaded fresh.
+Also confirm:
+- the ngrok tunnel is up, and `SURFBOARD_WEBHOOK_URL` in `server/.env`
+  matches its *current* URL (ngrok issues a new one every time the tunnel
+  process restarts — a stale value silently means no webhook ever arrives)
+- you have a real card ready to use on the hosted Payment Page (see Phase 3
+  — no test card exists for this flow; demo-environment real-card charges
+  auto-void within 30 minutes and are never settled)
+- seed data (admin, publisher, customer, a couple of unpublished games) is
+  loaded fresh
+
+**Rehearse the full checkout → real card → webhook → confirmation loop at
+least once before the actual demo** — this whole chain (tunnel liveness,
+webhook URL freshness, real card entry) has more moving parts than the rest
+of the demo combined, and none of them fail gracefully if untested.
 
 ---
 
@@ -79,8 +90,22 @@ card fields) → Surfboard-hosted Payment Page.
 4. Enter a pre-seeded gift card code — show it fully cover the remainder
    (v1: gift card must cover the whole order or it's rejected, so pick
    amounts ahead of time that make this clean).
-5. Click through to Surfboard's hosted Payment Page and complete payment
-   with sandbox test card details.
+5. Click through to Surfboard's hosted Payment Page and complete payment.
+
+**Card details, confirmed — no published test card exists for the online
+Payment Page flow.** Checked: Surfboard's public API docs, the payment page
+itself, and SurfTester (which turns out to be for a different channel
+entirely — in-store/terminal-present payments via an Android app, not
+online checkout). What Surfboard's docs *do* confirm
+(`apis-and-environments.md`): **"Any transactions made with real cards in
+the demo environment are automatically voided after 30 minutes and are
+never captured or settled."** So the real plan is to enter an actual card
+on the hosted page — it will process for real (proving the integration is
+genuinely live, not mocked) and auto-void itself within 30 minutes,
+never charging anything. **This must be rehearsed at least once before the
+real demo** — confirm the full flow (checkout → real card → webhook →
+confirmation screen) works end-to-end with time to spare, not for the
+first time live on stage.
 
 **Say:** "Both the promo and the gift card are validated again right now,
 server-side, at order-creation time — not just when they were first
@@ -89,13 +114,14 @@ would get rejected here even if it looked valid on the product page. The
 actual card entry and payment happen on Surfboard's own hosted page, not
 ours — we never touch card data."
 
-**If it fails live:** promo/gift card validation rejects unexpectedly, or
-the sandbox Payment Page itself errors.
+**If it fails live:** promo/gift card validation rejects unexpectedly, the
+sandbox Payment Page itself errors, or the card entry doesn't go through.
 - **Fallback:** have a second pre-validated promo/gift-card pair ready as a
-  backup. If the Payment Page itself is down, fall back to narrating the
-  flow over a screen recording captured during rehearsal, then resume the
-  live demo at Phase 4 using an order that was completed minutes before
-  the demo started.
+  backup. If card entry or the Payment Page itself is the problem, fall
+  back to narrating the flow over a screen recording captured during
+  rehearsal, then resume the live demo at Phase 4 using an order that was
+  completed (via the same real-card approach) a few minutes before the
+  demo started.
 
 ---
 
@@ -121,12 +147,19 @@ created as part of that same transaction."
 
 **If it fails live:** webhook doesn't arrive within a reasonable window
 (tunnel dropped, Surfboard-side delay).
-- **Fallback:** have a manual "replay webhook" script/endpoint ready
-  (pointed at the same sandbox payload shape) to fire the equivalent event
-  locally, or fall back to a status-poll-only path calling the Payments API
-  directly if the webhook infra is what's flaky, and be upfront that you're
-  doing so: "the webhook's delayed, let's confirm via a direct status
-  check instead."
+- **Fallback:** `server/src/scripts/test-webhook.ts <surfboardOrderId>`
+  already exists and is tested — it builds a real `order.paymentcompleted`
+  payload, signs it with the actual `SURFBOARD_WEBHOOK_SECRET`, and posts it
+  to the local receiver, which runs the exact same idempotency + post-payment
+  code path a genuine delivery would. Have a terminal ready with this
+  pre-typed (just needs the order ID from the current demo order) as an
+  instant manual trigger if the real webhook is late. Be upfront if you use
+  it: "the webhook's delayed, let's trigger it manually to keep moving" —
+  don't pretend it arrived on its own.
+- Confirm the ngrok tunnel is actually up and its URL matches
+  `SURFBOARD_WEBHOOK_URL` in `server/.env` *before* the demo starts — ngrok
+  URLs change if the tunnel process restarts, and a stale URL means no
+  webhook arrives at all, live or otherwise.
 
 ---
 

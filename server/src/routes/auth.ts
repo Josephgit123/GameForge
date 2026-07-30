@@ -4,6 +4,7 @@ import { Role, type User } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { signToken } from '../lib/jwt';
 import { requireAuth } from '../middleware/auth';
+import { asyncHandler } from '../lib/asyncHandler';
 
 export const authRouter = Router();
 
@@ -17,7 +18,7 @@ function toPublicUser(user: User) {
   };
 }
 
-authRouter.post('/signup', async (req, res) => {
+authRouter.post('/signup', asyncHandler(async (req, res) => {
   const { email, password, firstName, lastName } = req.body ?? {};
   if (!email || !password || !firstName || !lastName) {
     return res.status(400).json({ error: 'email, password, firstName, and lastName are required' });
@@ -35,9 +36,9 @@ authRouter.post('/signup', async (req, res) => {
 
   const token = signToken({ sub: user.id, role: user.role });
   res.status(201).json({ token, user: toPublicUser(user) });
-});
+}));
 
-authRouter.post('/login', async (req, res) => {
+authRouter.post('/login', asyncHandler(async (req, res) => {
   const { email, password } = req.body ?? {};
   if (!email || !password) {
     return res.status(400).json({ error: 'email and password are required' });
@@ -50,12 +51,12 @@ authRouter.post('/login', async (req, res) => {
 
   const token = signToken({ sub: user.id, role: user.role });
   res.json({ token, user: toPublicUser(user) });
-});
+}));
 
-authRouter.get('/me', requireAuth, async (req, res) => {
+authRouter.get('/me', requireAuth, asyncHandler(async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
   if (!user) {
     return res.status(404).json({ error: 'User not found' });
   }
   res.json({ user: toPublicUser(user) });
-});
+}));

@@ -228,12 +228,12 @@ Surfboard may deliver the same webhook more than once (retries on timeout,
 at-least-once delivery). Every webhook handler must, before touching any
 other table:
 
-1. Look up an existing `WebhookEvent` row for this event
-   **(proposed — confirm)** — recommended lookup key is the composite
-   `(eventType, surfboardReferenceId)`, since CLAUDE.md doesn't specify
-   whether Surfboard's payloads carry their own globally-unique event ID
-   separate from the entity ID they reference. If they do, prefer that as the
-   unique key instead once confirmed against the webhook payload shape.
+1. Look up an existing `WebhookEvent` row by `surfboardEventId`.
+   **Confirmed live** against Surfboard's actual webhook payload
+   (`metadata.eventId`) — a genuine globally-unique event ID, distinct from
+   the entity ID (`data.orderId`, etc.) the event refers to. This replaced
+   an earlier composite-key guess once the real payload shape was confirmed.
+   Surfboard's own docs recommend exactly this: dedupe on `metadata.eventId`.
 2. If a row exists **and** `processedAt` is set, no-op — return 200 and stop.
 3. If no row exists, insert one (with `processedAt` still null) inside the
    same transaction as the rest of the handler's state changes, then set

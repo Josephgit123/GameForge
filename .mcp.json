@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "surfboard-docs": {
+      "command": "node",
+      "args": ["./server/node_modules/@surfboardpayments/surf-mcp/dist/index.js"]
+    }
+  }
+}

@@ -200,8 +200,12 @@ model GiftCardRedemption {
 }
 
 model Promotion {
-  id                   String        @id @default(uuid())
-  surfboardPromotionId String
+  id String @id @default(uuid())
+  // Nullable: Surfboard's real Promotions API is a marketing-banner system
+  // (receipt/idle-screen display), not a discount-code system — there's no
+  // real Surfboard entity to reference here. Confirmed live; see
+  // docs/API_INTEGRATION.md#promotion-api. This is local-only business logic.
+  surfboardPromotionId String?
   code                 String        @unique
   type                 PromotionType
   value                Int
@@ -224,13 +228,12 @@ model PromotionUsage {
 
 model WebhookEvent {
   id                   String    @id @default(uuid())
+  // Confirmed live from Surfboard's webhook payload (metadata.eventId) —
+  // a genuine unique event ID, not a guessed composite key. This is the
+  // real idempotency key; see docs/DATABASE.md#idempotency-pattern.
+  surfboardEventId     String    @unique
   eventType            String
   surfboardReferenceId String
   payload              Json
   processedAt          DateTime?
-
-  // (proposed) composite dedupe key — see docs/DATABASE.md's idempotency
-  // pattern section for why, and the caveat that a Surfboard-native event
-  // ID (if one exists in the payload) would be a better key once confirmed.
-  @@unique([eventType, surfboardReferenceId])
 }

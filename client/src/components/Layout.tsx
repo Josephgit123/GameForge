@@ -16,6 +16,11 @@ export function Layout() {
             <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
               Storefront
             </NavLink>
+            {user && (
+              <NavLink to="/orders" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+                My Orders
+              </NavLink>
+            )}
             {user?.role === 'PUBLISHER' && (
               <NavLink
                 to="/publisher/games"
@@ -24,6 +29,40 @@ export function Layout() {
               >
                 My Games
               </NavLink>
+            )}
+            {(user?.role === 'ADMIN' || user?.role === 'PUBLISHER') && (
+              <NavLink
+                to="/admin/refunds"
+                className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                style={{ ['--portal-color' as string]: 'var(--violet)' }}
+              >
+                Refunds
+              </NavLink>
+            )}
+            {user?.role === 'ADMIN' && (
+              <>
+                <NavLink
+                  to="/admin/gift-cards"
+                  className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                  style={{ ['--portal-color' as string]: 'var(--violet)' }}
+                >
+                  Gift Cards
+                </NavLink>
+                <NavLink
+                  to="/admin/promotions"
+                  className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                  style={{ ['--portal-color' as string]: 'var(--violet)' }}
+                >
+                  Promotions
+                </NavLink>
+                <NavLink
+                  to="/admin/analytics"
+                  className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                  style={{ ['--portal-color' as string]: 'var(--violet)' }}
+                >
+                  Analytics
+                </NavLink>
+              </>
             )}
           </nav>
           <div className="row" style={{ gap: 'var(--sp-3)' }}>
