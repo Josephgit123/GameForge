@@ -263,6 +263,34 @@ Reuses `createOrder()`, same as checkout.
   up to 10 days. Refunds can only be issued within 90 days of purchase —
   enforced by Surfboard, not us.
 
+### Receipts API
+
+**Built in `server/src/services/surfboard.ts` (`emailReceipt`, `getReceiptLink`)
+and wired into `webhooks.ts` (auto-email on `PAYMENT_COMPLETED`) and
+`checkout.ts` (`GET /:orderId/receipt-link`) — code reaches Surfboard for
+real, but hits the same settlement gap as refunds.**
+
+- Only the two endpoints relevant to a purely digital storefront are
+  wrapped — `PUT /receipts/{id}/email` and `GET /receipts/{id}/link`. The
+  rest (cash-register fiscal fields, terminal printing, raw ESC/POS) assume
+  physical retail hardware GameForge doesn't have.
+- `{id}` accepts a Transaction ID, Payment ID, or Order ID per the docs.
+- **Confirmed live — same root cause as the `OR_0035` refund gap above:**
+  tried all three ID types against a real, genuinely-completed card
+  purchase (`orderStatus: PAYMENT_COMPLETED`) — every one came back
+  `{"status":"ERROR","message":"No Completed transaction found for the
+  given ID"}`. That order's `settlementStatus` was `"NOT_SETTLED"`, same as
+  every sandbox transaction seen in this project so far. Strongly suggests
+  receipts also require a **settled** transaction, not just a completed
+  payment — not something fixable from our side; a sandbox transaction
+  that never settles means this can't be live-verified end-to-end until
+  that's resolved (possibly requires Surfboard support, same class of gap
+  as the missing test card and the gift card `CREATED`-status issue).
+- The auto-email call in `webhooks.ts` is wrapped so a failure here can
+  never undo a completed purchase — it's a best-effort delivery, not the
+  source of truth for what the customer owns (that's always
+  `LibraryEntry`/`Order.status`).
+
 ### Gift Card API
 
 **Confirmed live, built and tested in `server/src/routes/giftcards.ts` and
@@ -303,6 +331,14 @@ Reuses `createOrder()`, same as checkout.
   reaches Surfboard for real, but full end-to-end redemption can't be
   live-tested until this is resolved (possibly requires contacting
   Surfboard support, same as the missing test card).
+  Re-checked against Surfboard's own "Gift Cards & Promotions" developer
+  guide (2026-07-31): its example Create Gift Card response shows
+  `"status": "ACTIVE"` immediately on creation — but every card created
+  live in our sandbox comes back `"status": "CREATED"`. Doc vs. live
+  mismatch, same pattern as other Surfboard docs issues in this project.
+  Suggests activation isn't an API-reachable step at all (possibly a
+  physical-terminal action, matching Surfboard's POS-centric product), not
+  something we're missing in the request.
 
 ### Promotion API
 

@@ -88,6 +88,9 @@ model Publisher {
   userId                 String          @unique
   surfboardMerchantId    String?
   surfboardApplicationId String?
+  // Returned alongside applicationId by Create Merchant — the real KYB
+  // verification link Surfboard expects the merchant to complete.
+  webKybUrl              String?
   status                 PublisherStatus @default(PENDING)
 
   user   User    @relation(fields: [userId], references: [id])
@@ -104,14 +107,23 @@ model Store {
 }
 
 model Game {
-  id             String     @id @default(uuid())
-  publisherId    String
-  title          String
-  description    String
-  price          Int
-  currency       String
-  status         GameStatus @default(DRAFT)
-  coverImageUrl  String?
+  id                 String     @id @default(uuid())
+  publisherId        String
+  title              String
+  description        String
+  price              Int
+  currency           String
+  status             GameStatus @default(DRAFT)
+  coverImageUrl      String?
+  // Short looping real video (via Pexels) used only by the hero carousel —
+  // generic thematic stock footage, not gameplay capture. Cards/grids never
+  // render this (autoplaying video across 100+ grid items would be heavy).
+  coverVideoUrl      String?
+  genre              String?
+  platform           String?
+  screenshotUrls     String[]  @default([])
+  systemRequirements String?
+  createdAt          DateTime  @default(now())
 
   publisher      Publisher      @relation(fields: [publisherId], references: [id])
   orderItems     OrderItem[]
@@ -237,4 +249,26 @@ model WebhookEvent {
   surfboardReferenceId String
   payload              Json
   processedAt          DateTime?
+}
+
+// Read-only reference data imported from the RAWG Video Games Database API
+// (https://rawg.io/apidocs), for a non-commercial "Discover" browsing
+// surface. Deliberately has NO relation to Game/Order/OrderItem/Payment/
+// LibraryEntry — nothing in this table is or can become purchasable
+// inventory. See server/src/services/rawg.ts.
+model RawgGame {
+  id          String   @id @default(uuid())
+  rawgId      Int      @unique
+  slug        String
+  name        String
+  description String?
+  backgroundImage String?
+  released    String?
+  rating      Float?
+  metacritic  Int?
+  esrbRating  String?
+  genres      String[] @default([])
+  platforms   String[] @default([])
+  importedAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

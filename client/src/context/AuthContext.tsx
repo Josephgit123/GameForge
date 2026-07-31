@@ -15,7 +15,17 @@ interface AuthContextValue {
     firstName: string;
     lastName: string;
     role?: Extract<Role, 'CUSTOMER' | 'PUBLISHER'>;
-  }) => Promise<User>;
+    // Required by the backend only when role is PUBLISHER — needed for a
+    // real Surfboard Create Merchant call.
+    storeName?: string;
+    corporateId?: string;
+    addressLine1?: string;
+    city?: string;
+    postalCode?: string;
+    countryCode?: string;
+    phoneCode?: string;
+    phoneNumber?: string;
+  }) => Promise<AuthResponse>;
   loginWithGoogle: (
     idToken: string,
     allowSignup: boolean,
@@ -65,9 +75,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     firstName: string;
     lastName: string;
     role?: Extract<Role, 'CUSTOMER' | 'PUBLISHER'>;
+    storeName?: string;
+    corporateId?: string;
+    addressLine1?: string;
+    city?: string;
+    postalCode?: string;
+    countryCode?: string;
+    phoneCode?: string;
+    phoneNumber?: string;
   }) {
     const res = await api.post<AuthResponse>('/auth/signup', data);
-    return persistSession(res);
+    persistSession(res);
+    return res;
   }
 
   async function loginWithGoogle(

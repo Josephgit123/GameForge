@@ -51,30 +51,47 @@ export function Signup() {
   }
 
   return (
-    <div className="page" style={{ maxWidth: 420 }}>
-      <h1 style={{ marginBottom: 'var(--sp-2)' }}>Create your account</h1>
-      <p style={{ color: 'var(--steam-400)', marginBottom: 'var(--sp-8)' }}>
-        Selling games instead? <Link to="/publisher/signup">Sign up as a publisher</Link>.
+    <div className="mx-auto max-w-md px-6 py-16">
+      <h1 className="mb-2 font-display text-2xl font-bold text-steam-100">Create your account</h1>
+      <p className="mb-8 text-steam-400">
+        Selling games instead?{' '}
+        <Link to="/publisher/signup" className="text-ember hover:underline">
+          Sign up as a publisher
+        </Link>
+        .
       </p>
-      <form onSubmit={onSubmit} className="stack" style={{ gap: 'var(--sp-4)' }}>
-        {error && <div className="form-error-banner">{error}</div>}
-        <div className="row" style={{ gap: 'var(--sp-4)' }}>
-          <div className="field" style={{ flex: 1 }}>
-            <label htmlFor="firstName">First name</label>
+      <form onSubmit={onSubmit} className="space-y-4">
+        {error && <div className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>}
+        <div className="flex gap-4">
+          <div className="flex-1">
+            <label htmlFor="firstName" className="mb-1 block text-sm font-medium text-steam-400">
+              First name
+            </label>
             <input
               id="firstName"
               required
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
+              className="w-full rounded-md border border-iron-700 bg-iron-800 px-3 py-2.5 text-steam-100 outline-none focus:border-ember"
             />
           </div>
-          <div className="field" style={{ flex: 1 }}>
-            <label htmlFor="lastName">Last name</label>
-            <input id="lastName" required value={lastName} onChange={(e) => setLastName(e.target.value)} />
+          <div className="flex-1">
+            <label htmlFor="lastName" className="mb-1 block text-sm font-medium text-steam-400">
+              Last name
+            </label>
+            <input
+              id="lastName"
+              required
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="w-full rounded-md border border-iron-700 bg-iron-800 px-3 py-2.5 text-steam-100 outline-none focus:border-ember"
+            />
           </div>
         </div>
-        <div className="field">
-          <label htmlFor="email">Email</label>
+        <div>
+          <label htmlFor="email" className="mb-1 block text-sm font-medium text-steam-400">
+            Email
+          </label>
           <input
             id="email"
             type="email"
@@ -82,10 +99,13 @@ export function Signup() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-md border border-iron-700 bg-iron-800 px-3 py-2.5 text-steam-100 outline-none focus:border-ember"
           />
         </div>
-        <div className="field">
-          <label htmlFor="password">Password</label>
+        <div>
+          <label htmlFor="password" className="mb-1 block text-sm font-medium text-steam-400">
+            Password
+          </label>
           <input
             id="password"
             type="password"
@@ -94,18 +114,26 @@ export function Signup() {
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-md border border-iron-700 bg-iron-800 px-3 py-2.5 text-steam-100 outline-none focus:border-ember"
           />
-          <span className="hint">At least 8 characters.</span>
+          <span className="mt-1 block text-xs text-steam-600">At least 8 characters.</span>
         </div>
-        <button type="submit" className="btn btn-primary btn-block" disabled={submitting}>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full rounded-md bg-ember py-3 font-semibold text-iron-900 transition-colors hover:bg-[#ff6a43] disabled:opacity-50"
+        >
           {submitting ? 'Creating account…' : 'Sign up'}
         </button>
       </form>
 
       <GoogleSignInButton onClick={onGoogleClick} submitting={googleSubmitting} label="Sign up with Google" />
 
-      <p style={{ marginTop: 'var(--sp-6)', fontSize: 14, color: 'var(--steam-400)' }}>
-        Already have an account? <Link to="/login">Log in</Link>
+      <p className="mt-6 text-sm text-steam-400">
+        Already have an account?{' '}
+        <Link to="/login" className="text-ember hover:underline">
+          Log in
+        </Link>
       </p>
     </div>
   );

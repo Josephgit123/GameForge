@@ -6,6 +6,15 @@ import { asyncHandler } from '../lib/asyncHandler';
 
 export const gamesRouter = Router();
 
+// Additive, read-only convenience for the storefront — flattens the
+// publisher's display name onto the game object instead of making every
+// card component reach through publisher.user itself.
+function withPublisherName<T extends { publisher: { user: { firstName: string; lastName: string } } }>(game: T) {
+  const { publisher, ...rest } = game;
+  return { ...rest, publisherName: `${publisher.user.firstName} ${publisher.user.lastName}` };
+}
+const PUBLISHER_NAME_INCLUDE = { publisher: { include: { user: true } } } as const;
+
 // Public: browse published games only.
 gamesRouter.get(
   '/',
@@ -13,8 +22,9 @@ gamesRouter.get(
     const games = await prisma.game.findMany({
       where: { status: GameStatus.PUBLISHED },
       orderBy: { title: 'asc' },
+      include: PUBLISHER_NAME_INCLUDE,
     });
-    res.json({ games });
+    res.json({ games: games.map(withPublisherName) });
   })
 );
 
@@ -36,15 +46,44 @@ gamesRouter.get(
   })
 );
 
+// Public: games ranked by units sold (completed orders only). Must be
+// registered before /:id so "top-sellers" isn't swallowed as a game id.
+gamesRouter.get(
+  '/top-sellers',
+  asyncHandler(async (_req, res) => {
+    const grouped = await prisma.orderItem.groupBy({
+      by: ['gameId'],
+      where: { order: { status: 'PAID' } },
+      _count: { gameId: true },
+      orderBy: { _count: { gameId: 'desc' } },
+    });
+
+    const games = await prisma.game.findMany({
+      where: { id: { in: grouped.map((g) => g.gameId) }, status: GameStatus.PUBLISHED },
+      include: PUBLISHER_NAME_INCLUDE,
+    });
+    const gameById = new Map(games.map((g) => [g.id, withPublisherName(g)]));
+
+    const ranked = grouped
+      .map((g) => ({ game: gameById.get(g.gameId), unitsSold: g._count.gameId }))
+      .filter((r): r is { game: NonNullable<typeof r.game>; unitsSold: number } => Boolean(r.game));
+
+    res.json({ games: ranked });
+  })
+);
+
 // Public: game detail. Non-published games 404 for anonymous/other users.
 gamesRouter.get(
   '/:id',
   asyncHandler(async (req, res) => {
-    const game = await prisma.game.findUnique({ where: { id: req.params.id } });
+    const game = await prisma.game.findUnique({
+      where: { id: req.params.id },
+      include: PUBLISHER_NAME_INCLUDE,
+    });
     if (!game || game.status !== GameStatus.PUBLISHED) {
       return res.status(404).json({ error: 'Game not found' });
     }
-    res.json({ game });
+    res.json({ game: withPublisherName(game) });
   })
 );
 
@@ -62,7 +101,8 @@ gamesRouter.post(
       return res.status(403).json({ error: 'Your publisher account is not yet approved' });
     }
 
-    const { title, description, price, currency, coverImageUrl } = req.body ?? {};
+    const { title, description, price, currency, coverImageUrl, genre, platform, screenshotUrls, systemRequirements } =
+      req.body ?? {};
     if (!title || !description || typeof price !== 'number' || !Number.isInteger(price) || !currency) {
       return res
         .status(400)
@@ -77,6 +117,10 @@ gamesRouter.post(
         price,
         currency,
         coverImageUrl: coverImageUrl || null,
+        genre: genre || null,
+        platform: platform || null,
+        screenshotUrls: Array.isArray(screenshotUrls) ? screenshotUrls : [],
+        systemRequirements: systemRequirements || null,
         status: GameStatus.DRAFT,
       },
     });
@@ -103,7 +147,8 @@ gamesRouter.patch(
       }
     }
 
-    const { title, description, price, currency, status, coverImageUrl } = req.body ?? {};
+    const { title, description, price, currency, status, coverImageUrl, genre, platform, screenshotUrls, systemRequirements } =
+      req.body ?? {};
 
     if (status !== undefined) {
       const allowedForRole =
@@ -122,6 +167,10 @@ gamesRouter.patch(
         ...(currency !== undefined && { currency }),
         ...(status !== undefined && { status }),
         ...(coverImageUrl !== undefined && { coverImageUrl: coverImageUrl || null }),
+        ...(genre !== undefined && { genre: genre || null }),
+        ...(platform !== undefined && { platform: platform || null }),
+        ...(screenshotUrls !== undefined && { screenshotUrls: Array.isArray(screenshotUrls) ? screenshotUrls : [] }),
+        ...(systemRequirements !== undefined && { systemRequirements: systemRequirements || null }),
       },
     });
     res.json({ game: updated });

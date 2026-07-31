@@ -2,10 +2,12 @@ import { Router } from 'express';
 import { OrderStatus, PaymentStatus, RefundStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { verifyWebhookSignature } from '../lib/webhookSignature';
+import { emailReceipt, SurfboardApiError } from '../services/surfboard';
 
 export const webhooksRouter = Router();
 
 const WEBHOOK_SECRET = process.env.SURFBOARD_WEBHOOK_SECRET as string;
+const MERCHANT_ID = process.env.SURFBOARD_DEMO_FALLBACK_MERCHANT_ID as string;
 
 interface PaymentCompletedData {
   orderId: string;
@@ -61,7 +63,7 @@ webhooksRouter.post('/surfboard', async (req, res) => {
 export async function handlePaymentCompleted(data: PaymentCompletedData) {
   const order = await prisma.order.findFirst({
     where: { surfboardOrderId: data.orderId },
-    include: { items: true },
+    include: { items: true, customer: { select: { email: true } } },
   });
   if (order) {
     await handleOriginalOrderCompleted(order, data);
@@ -84,7 +86,13 @@ export async function handlePaymentCompleted(data: PaymentCompletedData) {
 }
 
 async function handleOriginalOrderCompleted(
-  order: { id: string; status: OrderStatus; customerId: string; items: { gameId: string }[] },
+  order: {
+    id: string;
+    status: OrderStatus;
+    customerId: string;
+    items: { gameId: string }[];
+    customer: { email: string };
+  },
   data: PaymentCompletedData
 ) {
   // Belt-and-suspenders alongside the WebhookEvent id dedup above — this
@@ -122,4 +130,17 @@ async function handleOriginalOrderCompleted(
     // PromotionUsage increment isn't implemented yet — that's the next
     // piece of Phase 4.
   });
+
+  // Best-effort — a failed receipt email must never undo a completed
+  // purchase. The customer can still see everything in Order History either
+  // way; this is a convenience delivery, not the source of truth.
+  try {
+    await emailReceipt(MERCHANT_ID, data.orderId, order.customer.email);
+  } catch (err) {
+    if (err instanceof SurfboardApiError) {
+      console.error('Email receipt failed:', err.status, JSON.stringify(err.body));
+    } else {
+      console.error('Email receipt failed:', err);
+    }
+  }
 }

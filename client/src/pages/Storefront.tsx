@@ -1,154 +1,197 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { api } from '../lib/api';
-import { formatMoney } from '../lib/money';
 import { useAuth } from '../context/AuthContext';
-import type { Game } from '../lib/types';
+import { HeroCarousel } from '../components/HeroCarousel';
+import { GameCard } from '../components/GameCard';
+import { GameCardSkeleton, HeroSkeleton } from '../components/SkeletonLoader';
+import type { Game, LibraryEntry, TopSellerEntry } from '../lib/types';
 
-const SLIDE_INTERVAL_MS = 5000;
+function Shelf({
+  title,
+  games,
+  ownedIds,
+  interactive,
+}: {
+  title: string;
+  games: Game[];
+  ownedIds: Set<string>;
+  interactive: boolean;
+}) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  if (games.length === 0) return null;
+
+  function scrollBy(amount: number) {
+    scrollerRef.current?.scrollBy({ left: amount, behavior: 'smooth' });
+  }
+
+  return (
+    <section className="mx-auto max-w-7xl px-6 py-8">
+      <div className="mb-4 flex items-center justify-between">
+        <Link to="/categories" className="group flex items-center gap-1.5 font-display text-xl font-semibold text-steam-100">
+          {title}
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            className="translate-x-0 text-steam-400 transition-transform group-hover:translate-x-1 group-hover:text-steam-100"
+          >
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </Link>
+        <div className="hidden gap-2 sm:flex">
+          <button
+            type="button"
+            aria-label="Scroll left"
+            onClick={() => scrollBy(-600)}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-iron-700 text-steam-400 hover:bg-iron-800 hover:text-steam-100"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            aria-label="Scroll right"
+            onClick={() => scrollBy(600)}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-iron-700 text-steam-400 hover:bg-iron-800 hover:text-steam-100"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div ref={scrollerRef} className="flex snap-x gap-4 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none]">
+        {games.map((game, i) => (
+          <motion.div
+            key={game.id}
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ duration: 0.25, delay: i * 0.04 }}
+            className="w-40 shrink-0 snap-start sm:w-48"
+          >
+            <GameCard game={game} owned={ownedIds.has(game.id)} interactive={interactive} />
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export function Storefront() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const isCustomer = user?.role === 'CUSTOMER';
   const [games, setGames] = useState<Game[] | null>(null);
+  const [topSellers, setTopSellers] = useState<TopSellerEntry[] | null>(null);
+  const [ownedIds, setOwnedIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
-  const [heroIndex, setHeroIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     api
       .get<{ games: Game[] }>('/games')
       .then((res) => setGames(res.games))
       .catch(() => setError('Could not load the storefront right now.'));
+    api
+      .get<{ games: TopSellerEntry[] }>('/games/top-sellers')
+      .then((res) => setTopSellers(res.games))
+      .catch(() => setTopSellers([]));
   }, []);
 
-  const slideCount = games?.length ?? 0;
   useEffect(() => {
-    if (paused || slideCount < 2) return;
-    const timer = setInterval(() => {
-      setHeroIndex((i) => (i + 1) % slideCount);
-    }, SLIDE_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [paused, slideCount]);
+    if (!isCustomer) return;
+    api
+      .get<{ entries: LibraryEntry[] }>('/library', token)
+      .then((res) => setOwnedIds(new Set(res.entries.map((e) => e.gameId))))
+      .catch(() => {});
+  }, [isCustomer, token]);
 
-  const featured = games && games.length > 0 ? games[heroIndex % games.length] : null;
+  if (error) {
+    return (
+      <div className="mx-auto max-w-7xl px-6 py-16">
+        <div className="rounded-lg border border-danger/30 bg-danger/10 p-4 text-danger">{error}</div>
+      </div>
+    );
+  }
+
+  if (!games) {
+    return (
+      <div className="mx-auto max-w-7xl px-6 py-8">
+        <HeroSkeleton />
+        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <GameCardSkeleton key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (games.length === 0) {
+    return (
+      <div className="mx-auto max-w-7xl px-6 py-16 text-center text-steam-400">No games published yet.</div>
+    );
+  }
+
+  const SHELF_SIZE = 20;
+  const recentlyReleased = [...games]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, SHELF_SIZE);
+  const freeGames = games.filter((g) => g.price === 0).slice(0, SHELF_SIZE);
+  const allGamesPreview = games.slice(0, SHELF_SIZE);
+  const featuredForHero = topSellers && topSellers.length > 0 ? topSellers.map((t) => t.game) : games.slice(0, 5);
 
   return (
     <div>
-      {featured && (
-        <div className="page" style={{ paddingBottom: 0 }}>
-          <h2 style={{ marginBottom: 'var(--sp-4)' }}>Featured &amp; Recommended</h2>
-          <div
-            className="store-hero"
-            onMouseEnter={() => setPaused(true)}
-            onMouseLeave={() => setPaused(false)}
-          >
-            <div
-              className="store-hero-media"
-              style={
-                featured.coverImageUrl
-                  ? { backgroundImage: `url(${featured.coverImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                  : undefined
-              }
-            >
-              {games && games.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    className="store-hero-arrow store-hero-arrow-prev"
-                    aria-label="Previous game"
-                    onClick={() => setHeroIndex((i) => (i - 1 + games.length) % games.length)}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                      <path d="m15 18-6-6 6-6" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    className="store-hero-arrow store-hero-arrow-next"
-                    aria-label="Next game"
-                    onClick={() => setHeroIndex((i) => (i + 1) % games.length)}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                      <path d="m9 18 6-6-6-6" />
-                    </svg>
-                  </button>
-                  <div className="store-hero-dots">
-                    {games.map((g, i) => (
-                      <button
-                        key={g.id}
-                        type="button"
-                        className={`store-hero-dot${i === heroIndex % games.length ? ' active' : ''}`}
-                        aria-label={`Show ${g.title}`}
-                        onClick={() => setHeroIndex(i)}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="store-hero-info">
-              <span className="store-hero-eyebrow">Featured</span>
-              <h1>{featured.title}</h1>
-              <p>{featured.description}</p>
-              <span className="store-hero-price">{formatMoney(featured.price, featured.currency)}</span>
-              {isCustomer && (
-                <Link to={`/games/${featured.id}`} className="btn btn-primary btn-block">
-                  View game
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
+      <div className="mx-auto max-w-7xl px-6 pt-8">
+        <HeroCarousel
+          games={featuredForHero}
+          renderCta={(game) =>
+            isCustomer ? (
+              <Link
+                to={`/games/${game.id}`}
+                className="rounded-md bg-ember px-6 py-3 font-semibold text-iron-900 transition-colors hover:bg-[#ff6a43]"
+              >
+                View game
+              </Link>
+            ) : (
+              <Link to="/login" className="rounded-md border border-white/30 px-6 py-3 font-semibold text-steam-100 hover:bg-white/10">
+                Log in to view
+              </Link>
+            )
+          }
+        />
+      </div>
+
+      {!isCustomer && (
+        <p className="mx-auto max-w-7xl px-6 pt-6 text-sm text-steam-400">
+          <Link to="/login" className="text-ember hover:underline">
+            Log in as a customer
+          </Link>{' '}
+          to view games, wishlist, and purchase.
+        </p>
       )}
 
-      <div className="page">
-        {error && <div className="form-error-banner">{error}</div>}
-        {!error && !games && <p style={{ color: 'var(--steam-400)' }}>Loading games…</p>}
-        {games && games.length === 0 && <p style={{ color: 'var(--steam-400)' }}>No games published yet.</p>}
-
-        {games && games.length > 0 && (
-          <>
-            <h2 style={{ marginBottom: 'var(--sp-6)' }}>All games</h2>
-            {!isCustomer && (
-              <p style={{ color: 'var(--steam-400)', marginBottom: 'var(--sp-4)', fontSize: 14 }}>
-                <Link to="/login">Log in as a customer</Link> to view and purchase games.
-              </p>
-            )}
-            <div className="grid-cards">
-              {games.map((game) => {
-                const cover = (
-                  <div
-                    className="cover"
-                    style={
-                      game.coverImageUrl
-                        ? { backgroundImage: `url(${game.coverImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                        : undefined
-                    }
-                  />
-                );
-                const body = (
-                  <div className="body">
-                    <span className="title">{game.title}</span>
-                    <span className="price">{formatMoney(game.price, game.currency)}</span>
-                  </div>
-                );
-                return isCustomer ? (
-                  <Link key={game.id} to={`/games/${game.id}`} className="game-card">
-                    {cover}
-                    {body}
-                  </Link>
-                ) : (
-                  <div key={game.id} className="game-card game-card-locked">
-                    {cover}
-                    {body}
-                    <span className="game-card-lock-hint">Log in to view</span>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
+      {topSellers && topSellers.length > 0 && (
+        <Shelf title="Top Sellers" games={topSellers.map((t) => t.game)} ownedIds={ownedIds} interactive={isCustomer} />
+      )}
+      <Shelf title="Recently Released" games={recentlyReleased} ownedIds={ownedIds} interactive={isCustomer} />
+      {freeGames.length > 0 && (
+        <Shelf title="Free Games" games={freeGames} ownedIds={ownedIds} interactive={isCustomer} />
+      )}
+      <Shelf title="All Games" games={allGamesPreview} ownedIds={ownedIds} interactive={isCustomer} />
+      <div className="mx-auto max-w-7xl px-6 pb-12 text-center">
+        <Link
+          to="/categories"
+          className="inline-block rounded-md border border-iron-700 px-6 py-3 font-semibold text-steam-100 hover:bg-iron-800"
+        >
+          Browse all {games.length} games
+        </Link>
       </div>
     </div>
   );

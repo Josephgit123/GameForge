@@ -29,7 +29,7 @@ export class SurfboardApiError extends Error {
 }
 
 async function request<T>(
-  method: 'GET' | 'POST' | 'PATCH',
+  method: 'GET' | 'POST' | 'PATCH' | 'PUT',
   path: string,
   body?: unknown,
   merchantId?: string
@@ -354,4 +354,30 @@ export interface OrderStatusResponse {
 
 export function getOrderStatus(merchantId: string, orderId: string) {
   return request<OrderStatusResponse>('GET', `/orders/${orderId}/status`, undefined, merchantId);
+}
+
+// --- Receipts API ---
+// PUT/GET /receipts/{id} — {id} accepts a Transaction ID, Payment ID, or
+// Order ID interchangeably. Only the two endpoints relevant to a purely
+// digital storefront are wrapped here — the rest (cash-register fiscal
+// fields, terminal printing, raw ESC/POS) assume physical retail hardware
+// GameForge doesn't have.
+
+export interface EmailReceiptResponse {
+  status: string;
+  message: string;
+}
+
+export function emailReceipt(merchantId: string, id: string, email: string) {
+  return request<EmailReceiptResponse>('PUT', `/receipts/${id}/email`, { email }, merchantId);
+}
+
+export interface ReceiptLinkResponse {
+  status: string;
+  data: { receiptURL: string };
+  message: string;
+}
+
+export function getReceiptLink(merchantId: string, id: string) {
+  return request<ReceiptLinkResponse>('GET', `/receipts/${id}/link`, undefined, merchantId);
 }

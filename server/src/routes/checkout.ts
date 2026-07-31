@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { GameStatus, GiftCardStatus, OrderStatus, PromotionType } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { requireAuth } from '../middleware/auth';
-import { createOrder, initiatePayment, SurfboardApiError } from '../services/surfboard';
+import { createOrder, getReceiptLink, initiatePayment, SurfboardApiError } from '../services/surfboard';
 import { asyncHandler } from '../lib/asyncHandler';
 
 export const checkoutRouter = Router();
@@ -154,6 +154,7 @@ checkoutRouter.post(
     } catch (err) {
       // Local Order stays PENDING with no surfboardOrderId — customer can retry.
       if (err instanceof SurfboardApiError) {
+        console.error('Checkout failed:', err.status, JSON.stringify(err.body));
         return res.status(502).json({ error: 'Could not create the order with the payment provider' });
       }
       throw err;
@@ -186,5 +187,32 @@ checkoutRouter.get(
       return res.status(404).json({ error: 'Order not found' });
     }
     res.json({ status: order.status });
+  })
+);
+
+// Customer: a hosted link to their own receipt — real Surfboard-generated
+// receipt, not something GameForge builds itself. Only meaningful once the
+// order actually completed (see docs/API_INTEGRATION.md — Receipts API).
+checkoutRouter.get(
+  '/:orderId/receipt-link',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const order = await prisma.order.findUnique({ where: { id: req.params.orderId } });
+    if (!order || order.customerId !== req.user!.id) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    if (order.status !== OrderStatus.PAID || !order.surfboardOrderId) {
+      return res.status(400).json({ error: 'Only a paid order has a receipt' });
+    }
+
+    try {
+      const receipt = await getReceiptLink(MERCHANT_ID, order.surfboardOrderId);
+      res.json({ receiptUrl: receipt.data.receiptURL });
+    } catch (err) {
+      if (err instanceof SurfboardApiError) {
+        return res.status(502).json({ error: 'Could not fetch the receipt right now', detail: err.body });
+      }
+      throw err;
+    }
   })
 );

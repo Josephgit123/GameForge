@@ -22,6 +22,10 @@ export function PublisherGames() {
   const [price, setPrice] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [coverImageUrl, setCoverImageUrl] = useState('');
+  const [genre, setGenre] = useState('');
+  const [platform, setPlatform] = useState('');
+  const [screenshotUrlsInput, setScreenshotUrlsInput] = useState('');
+  const [systemRequirements, setSystemRequirements] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -44,15 +48,33 @@ export function PublisherGames() {
     }
     setSubmitting(true);
     try {
+      const screenshotUrls = screenshotUrlsInput
+        .split(',')
+        .map((url) => url.trim())
+        .filter(Boolean);
       await api.post(
         '/games',
-        { title, description, price: priceMinorUnits, currency, coverImageUrl: coverImageUrl || undefined },
+        {
+          title,
+          description,
+          price: priceMinorUnits,
+          currency,
+          coverImageUrl: coverImageUrl || undefined,
+          genre: genre || undefined,
+          platform: platform || undefined,
+          screenshotUrls,
+          systemRequirements: systemRequirements || undefined,
+        },
         token
       );
       setTitle('');
       setDescription('');
       setPrice('');
       setCoverImageUrl('');
+      setGenre('');
+      setPlatform('');
+      setScreenshotUrlsInput('');
+      setSystemRequirements('');
       setFormOpen(false);
       refresh();
     } catch (err) {
@@ -75,7 +97,7 @@ export function PublisherGames() {
   return (
     <div className="page">
       <div className="row" style={{ justifyContent: 'space-between', marginBottom: 'var(--sp-8)' }}>
-        <h1>My games</h1>
+        <h1>Manage products</h1>
         <button type="button" className="btn btn-primary" onClick={() => setFormOpen((v) => !v)}>
           {formOpen ? 'Cancel' : 'Add game'}
         </button>
@@ -121,6 +143,37 @@ export function PublisherGames() {
               onChange={(e) => setCoverImageUrl(e.target.value)}
             />
             <span className="hint">Optional — shown on the storefront and game page. Leave blank for a placeholder.</span>
+          </div>
+          <div className="row" style={{ gap: 'var(--sp-4)' }}>
+            <div className="field" style={{ flex: 1 }}>
+              <label htmlFor="genre">Genre</label>
+              <input id="genre" placeholder="Roguelike" value={genre} onChange={(e) => setGenre(e.target.value)} />
+              <span className="hint">Optional — powers the storefront's Categories filter.</span>
+            </div>
+            <div className="field" style={{ flex: 1 }}>
+              <label htmlFor="platform">Platform</label>
+              <input id="platform" placeholder="PC" value={platform} onChange={(e) => setPlatform(e.target.value)} />
+            </div>
+          </div>
+          <div className="field">
+            <label htmlFor="screenshotUrls">Screenshot URLs</label>
+            <input
+              id="screenshotUrls"
+              placeholder="https://…, https://…, https://…"
+              value={screenshotUrlsInput}
+              onChange={(e) => setScreenshotUrlsInput(e.target.value)}
+            />
+            <span className="hint">Optional, comma-separated — shown as a gallery on the game page.</span>
+          </div>
+          <div className="field">
+            <label htmlFor="systemRequirements">System requirements</label>
+            <textarea
+              id="systemRequirements"
+              placeholder="OS: Windows 10&#10;CPU: ...&#10;RAM: 8 GB"
+              value={systemRequirements}
+              onChange={(e) => setSystemRequirements(e.target.value)}
+            />
+            <span className="hint">Optional — shown on the game page.</span>
           </div>
           <button type="submit" className="btn btn-primary" disabled={submitting} style={{ alignSelf: 'flex-start' }}>
             {submitting ? 'Creating…' : 'Create game (as draft)'}

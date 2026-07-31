@@ -11,13 +11,18 @@ export function GoogleSignInButton({ onClick, submitting, label = 'Continue with
 
   return (
     <>
-      <div className="row" style={{ alignItems: 'center', gap: 'var(--sp-3)', margin: 'var(--sp-5) 0' }}>
-        <div style={{ flex: 1, height: 1, background: 'var(--iron-700)' }} />
-        <span style={{ fontSize: 12, color: 'var(--steam-400)' }}>or</span>
-        <div style={{ flex: 1, height: 1, background: 'var(--iron-700)' }} />
+      <div className="my-5 flex items-center gap-3">
+        <div className="h-px flex-1 bg-iron-700" />
+        <span className="text-xs text-steam-400">or</span>
+        <div className="h-px flex-1 bg-iron-700" />
       </div>
-      <button type="button" className="btn btn-secondary btn-block" disabled={submitting} onClick={onClick}>
-        <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true" style={{ marginRight: 8 }}>
+      <button
+        type="button"
+        disabled={submitting}
+        onClick={onClick}
+        className="flex w-full items-center justify-center gap-2 rounded-md border border-iron-700 py-3 font-semibold text-steam-100 transition-colors hover:bg-iron-800 disabled:opacity-50"
+      >
+        <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
           <path
             fill="#FFC107"
             d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.1 5.5 29.3 3.5 24 3.5 12.7 3.5 3.5 12.7 3.5 24S12.7 44.5 24 44.5 44.5 35.3 44.5 24c0-1.2-.1-2.4-.9-3.5Z"

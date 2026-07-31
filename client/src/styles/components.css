@@ -424,14 +424,14 @@
   z-index: 10;
 }
 .topnav-inner {
-  max-width: 1120px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 0 var(--sp-6);
-  height: 64px;
+  padding: var(--sp-3) var(--sp-6);
+  min-height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-6);
+  gap: var(--sp-4);
 }
 .brand {
   font-family: var(--font-display);
@@ -446,8 +446,9 @@
 }
 .nav-links {
   display: flex;
-  align-items: stretch;
-  gap: var(--sp-6);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
   flex: 1;
 }
 .nav-link {
@@ -456,11 +457,11 @@
   color: var(--steam-400);
   text-decoration: none;
   padding: var(--sp-2) var(--sp-1);
-  height: 100%;
   display: inline-flex;
   align-items: center;
   border-bottom: 2px solid transparent;
   letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 .nav-link:hover {
   color: var(--steam-100);

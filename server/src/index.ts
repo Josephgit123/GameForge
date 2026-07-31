@@ -11,6 +11,9 @@ import { giftCardsRouter } from './routes/giftcards';
 import { promotionsRouter } from './routes/promotions';
 import { analyticsRouter } from './routes/analytics';
 import { libraryRouter } from './routes/library';
+import { adminRawgRouter } from './routes/admin-rawg';
+import { discoverRouter } from './routes/discover';
+import { adminRouter } from './routes/admin';
 
 const app = express();
 const port = process.env.PORT ?? 4000;
@@ -39,6 +42,9 @@ app.use('/gift-cards', giftCardsRouter);
 app.use('/promotions', promotionsRouter);
 app.use('/analytics', analyticsRouter);
 app.use('/library', libraryRouter);
+app.use('/admin/rawg', adminRawgRouter);
+app.use('/discover', discoverRouter);
+app.use('/admin', adminRouter);
 
 app.get('/health/db', async (_req, res) => {
   try {

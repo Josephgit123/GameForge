@@ -5,10 +5,10 @@ import { formatMoney } from '../lib/money';
 import type { Order } from '../lib/types';
 
 function statusBadgeClass(status: Order['status']) {
-  if (status === 'PAID') return 'badge badge-success';
-  if (status === 'REFUNDED') return 'badge badge-info';
-  if (status === 'FAILED') return 'badge badge-danger';
-  return 'badge badge-warning';
+  if (status === 'PAID') return 'bg-success/15 text-success';
+  if (status === 'REFUNDED') return 'bg-info/15 text-info';
+  if (status === 'FAILED') return 'bg-danger/15 text-danger';
+  return 'bg-warning/15 text-warning';
 }
 
 export function OrderHistory() {
@@ -18,6 +18,7 @@ export function OrderHistory() {
   const [refundingOrderId, setRefundingOrderId] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
 
   function refresh() {
     api
@@ -27,6 +28,19 @@ export function OrderHistory() {
   }
 
   useEffect(refresh, [token]);
+
+  async function viewReceipt(orderId: string) {
+    setReceiptLoadingId(orderId);
+    setError(null);
+    try {
+      const res = await api.get<{ receiptUrl: string }>(`/checkout/${orderId}/receipt-link`, token);
+      window.open(res.receiptUrl, '_blank', 'noreferrer');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not fetch the receipt right now.');
+    } finally {
+      setReceiptLoadingId(null);
+    }
+  }
 
   async function submitRefund(orderId: string) {
     if (!reason.trim()) return;
@@ -44,81 +58,95 @@ export function OrderHistory() {
   }
 
   return (
-    <div className="page">
-      <h1 style={{ marginBottom: 'var(--sp-8)' }}>Order history</h1>
-      {error && <div className="form-error-banner" style={{ marginBottom: 'var(--sp-6)' }}>{error}</div>}
-      {!error && !orders && <p style={{ color: 'var(--steam-400)' }}>Loading…</p>}
-      {orders && orders.length === 0 && <p style={{ color: 'var(--steam-400)' }}>No orders yet.</p>}
+    <div className="mx-auto max-w-3xl px-6 py-8">
+      <h1 className="mb-8 font-display text-2xl font-bold text-steam-100">Purchase history</h1>
+      {error && <div className="mb-6 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>}
+      {!error && !orders && <p className="text-steam-400">Loading…</p>}
+      {orders && orders.length === 0 && <p className="text-steam-400">No orders yet.</p>}
 
       {orders && orders.length > 0 && (
-        <div className="stack" style={{ gap: 'var(--sp-4)' }}>
+        <div className="space-y-4">
           {orders.map((order) => {
             const existingRefund = order.refunds[0];
             return (
-              <div key={order.id} className="panel-card">
-                <div className="row" style={{ justifyContent: 'space-between', marginBottom: 'var(--sp-3)' }}>
-                  <span className="mono" style={{ fontSize: 13, color: 'var(--steam-400)' }}>
-                    {new Date(order.createdAt).toLocaleString()}
+              <div key={order.id} className="rounded-2xl border border-iron-700 bg-iron-900 p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="font-mono text-xs text-steam-400">{new Date(order.createdAt).toLocaleString()}</span>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(order.status)}`}>
+                    {order.status}
                   </span>
-                  <span className={statusBadgeClass(order.status)}>{order.status}</span>
                 </div>
-                <div className="stack" style={{ gap: 'var(--sp-1)', marginBottom: 'var(--sp-3)' }}>
+                <div className="mb-3 space-y-1">
                   {order.items.map((item) => (
-                    <div key={item.id} className="row" style={{ justifyContent: 'space-between', fontSize: 14 }}>
-                      <span>{item.game.title}</span>
-                      <span className="mono" style={{ color: 'var(--steam-400)' }}>
-                        {formatMoney(item.priceAtPurchase, order.currency)}
-                      </span>
+                    <div key={item.id} className="flex items-center justify-between text-sm">
+                      <span className="text-steam-100">{item.game.title}</span>
+                      <span className="font-mono text-steam-400">{formatMoney(item.priceAtPurchase, order.currency)}</span>
                     </div>
                   ))}
                 </div>
-                <div
-                  className="row"
-                  style={{ justifyContent: 'space-between', paddingTop: 'var(--sp-3)', borderTop: '1px solid var(--iron-700)' }}
-                >
-                  <span className="mono" style={{ fontWeight: 600 }}>
+                <div className="flex items-center justify-between border-t border-iron-700 pt-3">
+                  <span className="font-mono font-semibold text-steam-100">
                     Total: {formatMoney(order.totalAmount, order.currency)}
                   </span>
 
-                  {order.status === 'PAID' && !existingRefund && refundingOrderId !== order.id && (
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRefundingOrderId(order.id)}>
-                      Request refund
-                    </button>
-                  )}
+                  <div className="flex items-center gap-4">
+                    {order.status === 'PAID' && (
+                      <button
+                        type="button"
+                        disabled={receiptLoadingId === order.id}
+                        onClick={() => viewReceipt(order.id)}
+                        className="text-sm font-medium text-steam-400 hover:text-steam-100 disabled:opacity-50"
+                      >
+                        {receiptLoadingId === order.id ? 'Loading…' : 'View receipt'}
+                      </button>
+                    )}
+                    {order.status === 'PAID' && !existingRefund && refundingOrderId !== order.id && (
+                      <button
+                        type="button"
+                        onClick={() => setRefundingOrderId(order.id)}
+                        className="text-sm font-medium text-steam-400 hover:text-steam-100"
+                      >
+                        Request refund
+                      </button>
+                    )}
+                  </div>
                   {existingRefund && (
-                    <span className={statusBadgeClass('REFUNDED')} style={{ fontSize: 11 }}>
+                    <span className="rounded-full bg-info/15 px-2.5 py-1 text-xs font-semibold text-info">
                       Refund {existingRefund.status.toLowerCase()}
                     </span>
                   )}
                 </div>
 
                 {refundingOrderId === order.id && (
-                  <div className="stack" style={{ gap: 'var(--sp-3)', marginTop: 'var(--sp-4)' }}>
-                    <div className="field">
-                      <label htmlFor={`reason-${order.id}`}>Reason</label>
+                  <div className="mt-4 space-y-3">
+                    <div>
+                      <label htmlFor={`reason-${order.id}`} className="mb-1 block text-xs font-medium text-steam-400">
+                        Reason
+                      </label>
                       <input
                         id={`reason-${order.id}`}
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
                         placeholder="Why are you requesting a refund?"
+                        className="w-full rounded-md border border-iron-700 bg-iron-800 px-3 py-2 text-sm text-steam-100 outline-none placeholder:text-steam-600 focus:border-ember"
                       />
                     </div>
-                    <div className="row" style={{ gap: 'var(--sp-3)' }}>
+                    <div className="flex gap-3">
                       <button
                         type="button"
-                        className="btn btn-primary btn-sm"
                         disabled={submitting}
                         onClick={() => submitRefund(order.id)}
+                        className="rounded-md bg-ember px-4 py-2 text-sm font-semibold text-iron-900 hover:bg-[#ff6a43] disabled:opacity-50"
                       >
                         {submitting ? 'Submitting…' : 'Submit request'}
                       </button>
                       <button
                         type="button"
-                        className="btn btn-ghost btn-sm"
                         onClick={() => {
                           setRefundingOrderId(null);
                           setReason('');
                         }}
+                        className="rounded-md px-4 py-2 text-sm text-steam-400 hover:bg-iron-800"
                       >
                         Cancel
                       </button>

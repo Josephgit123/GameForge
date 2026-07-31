@@ -7,8 +7,63 @@ import { signToken } from '../lib/jwt';
 import { requireAuth } from '../middleware/auth';
 import { asyncHandler } from '../lib/asyncHandler';
 import { FirebaseNotConfiguredError, verifyGoogleIdToken } from '../lib/firebaseAdmin';
+import { createMerchant, SurfboardApiError } from '../services/surfboard';
 
 export const authRouter = Router();
+
+// Pre-provisioned once via scripts/test-create-billing-plan.ts — Create
+// Merchant fails without an existing billing plan for the partner.
+const TRANSACTION_PRICING_PLAN = 'GF_STANDARD';
+
+interface PublisherBusinessDetails {
+  storeName: string;
+  corporateId: string;
+  addressLine1: string;
+  city: string;
+  postalCode: string;
+  countryCode: string;
+  phoneCode: string;
+  phoneNumber: string;
+}
+
+// Fires the real Create Merchant call and persists whatever Surfboard
+// returns onto the Publisher row. Failure here must never fail the
+// signup itself — the account still needs to exist locally so an admin
+// can review it, same as if onboarding is simply started later.
+async function startMerchantOnboarding(publisherId: string, email: string, details: PublisherBusinessDetails) {
+  try {
+    const res = await createMerchant({
+      country: details.countryCode,
+      organisation: { corporateId: details.corporateId },
+      controlFields: {
+        transactionPricingPlan: TRANSACTION_PRICING_PLAN,
+        store: {
+          name: details.storeName,
+          email,
+          phoneNumber: { code: details.phoneCode, number: details.phoneNumber },
+          address: {
+            addressLine1: details.addressLine1,
+            city: details.city,
+            countryCode: details.countryCode,
+            postalCode: details.postalCode,
+          },
+        },
+      },
+    });
+    await prisma.publisher.update({
+      where: { id: publisherId },
+      data: { surfboardApplicationId: res.data.applicationId, webKybUrl: res.data.webKybUrl },
+    });
+    return { applicationId: res.data.applicationId, webKybUrl: res.data.webKybUrl };
+  } catch (err) {
+    if (err instanceof SurfboardApiError) {
+      console.error('Create Merchant failed at signup:', err.status, JSON.stringify(err.body));
+    } else {
+      console.error('Create Merchant failed at signup:', err);
+    }
+    return null;
+  }
+}
 
 function toPublicUser(user: User) {
   return {
@@ -21,7 +76,21 @@ function toPublicUser(user: User) {
 }
 
 authRouter.post('/signup', asyncHandler(async (req, res) => {
-  const { email, password, firstName, lastName, role } = req.body ?? {};
+  const {
+    email,
+    password,
+    firstName,
+    lastName,
+    role,
+    storeName,
+    corporateId,
+    addressLine1,
+    city,
+    postalCode,
+    countryCode,
+    phoneCode,
+    phoneNumber,
+  } = req.body ?? {};
   if (!email || !password || !firstName || !lastName) {
     return res.status(400).json({ error: 'email, password, firstName, and lastName are required' });
   }
@@ -31,6 +100,18 @@ authRouter.post('/signup', asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'role must be CUSTOMER or PUBLISHER' });
   }
   const requestedRole = role === Role.PUBLISHER ? Role.PUBLISHER : Role.CUSTOMER;
+
+  // A real Create Merchant call needs real business details — required only
+  // for publisher signup, since a customer account has no merchant behind it.
+  if (
+    requestedRole === Role.PUBLISHER &&
+    (!storeName || !corporateId || !addressLine1 || !city || !postalCode || !countryCode || !phoneCode || !phoneNumber)
+  ) {
+    return res.status(400).json({
+      error:
+        'storeName, corporateId, addressLine1, city, postalCode, countryCode, phoneCode, and phoneNumber are required for a publisher account',
+    });
+  }
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -42,14 +123,26 @@ authRouter.post('/signup', asyncHandler(async (req, res) => {
     data: { email, passwordHash, firstName, lastName, role: requestedRole },
   });
 
+  let surfboardOnboarding: { applicationId: string; webKybUrl: string } | null = null;
   if (requestedRole === Role.PUBLISHER) {
-    // Real Surfboard merchant onboarding (Create Merchant + KYB) happens as
-    // a separate step, not at signup — this just reserves the account.
-    await prisma.publisher.create({ data: { userId: user.id, status: PublisherStatus.PENDING } });
+    const publisher = await prisma.publisher.create({ data: { userId: user.id, status: PublisherStatus.PENDING } });
+    // Real Create Merchant call — fires here, not as a later manual step.
+    // Failure doesn't fail the signup; the account still needs to exist so
+    // an admin can review it, same as if onboarding starts later.
+    surfboardOnboarding = await startMerchantOnboarding(publisher.id, email, {
+      storeName,
+      corporateId,
+      addressLine1,
+      city,
+      postalCode,
+      countryCode,
+      phoneCode,
+      phoneNumber,
+    });
   }
 
   const token = signToken({ sub: user.id, role: user.role });
-  res.status(201).json({ token, user: toPublicUser(user) });
+  res.status(201).json({ token, user: toPublicUser(user), surfboardOnboarding });
 }));
 
 authRouter.post('/google', asyncHandler(async (req, res) => {

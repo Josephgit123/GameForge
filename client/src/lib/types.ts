@@ -21,11 +21,26 @@ export interface Game {
   currency: string;
   status: GameStatus;
   coverImageUrl: string | null;
+  coverVideoUrl: string | null;
+  genre: string | null;
+  platform: string | null;
+  screenshotUrls: string[];
+  systemRequirements: string | null;
+  createdAt: string;
+  publisherName: string;
+}
+
+export interface TopSellerEntry {
+  game: Game;
+  unitsSold: number;
 }
 
 export interface AuthResponse {
   token: string;
   user: User;
+  // Only present on a publisher signup response — null if Create Merchant
+  // failed, absent entirely for customer signups/logins.
+  surfboardOnboarding?: { applicationId: string; webKybUrl: string } | null;
 }
 
 export interface OrderItem {
@@ -85,15 +100,63 @@ export interface Promotion {
   _count?: { usages: number };
 }
 
-export interface SalesPoint {
+export interface PublisherSalesPoint {
   date: string;
   totalRevenue: number;
-  orderCount: number;
+  unitsSold: number;
 }
 
-export interface PublisherRevenue {
-  publisherId: string;
-  publisherEmail: string;
+export interface PublisherGameRevenue {
+  gameId: string;
+  title: string;
+  unitsSold: number;
   totalRevenue: number;
-  gamesSold: number;
+}
+
+export interface PublisherStatusInfo {
+  id: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  surfboardMerchantId: string | null;
+  surfboardApplicationId: string | null;
+  webKybUrl: string | null;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  role: Role;
+  firstName: string;
+  lastName: string;
+  publisher: PublisherStatusInfo | null;
+}
+
+export interface AdminTransaction {
+  id: string;
+  surfboardOrderId: string | null;
+  status: OrderStatus;
+  totalAmount: number;
+  currency: string;
+  createdAt: string;
+  customer: { email: string };
+  items: { id: string; gameId: string; priceAtPurchase: number; game: { title: string } }[];
+  refunds: Refund[];
+}
+
+// Real-world reference data from RAWG (see server/src/routes/discover.ts).
+// Informational only — deliberately has no price/currency and no relation
+// to Game/Order/checkout. Never render a buy/cart/wishlist control against
+// this type.
+export interface RawgGame {
+  id: string;
+  rawgId: number;
+  slug: string;
+  name: string;
+  description: string | null;
+  backgroundImage: string | null;
+  released: string | null;
+  rating: number | null;
+  metacritic: number | null;
+  esrbRating: string | null;
+  genres: string[];
+  platforms: string[];
 }

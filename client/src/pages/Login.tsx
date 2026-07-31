@@ -16,11 +16,11 @@ const ROLE_LABEL: Record<Role, string> = {
 interface PortalLoginProps {
   role: Role;
   heading: string;
-  accent: string;
+  accentClass: string;
   signupHref?: string;
 }
 
-export function PortalLogin({ role, heading, accent, signupHref }: PortalLoginProps) {
+export function PortalLogin({ role, heading, accentClass, signupHref }: PortalLoginProps) {
   const { login, loginWithGoogle, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -78,15 +78,15 @@ export function PortalLogin({ role, heading, accent, signupHref }: PortalLoginPr
   }
 
   return (
-    <div className="page" style={{ maxWidth: 420 }}>
-      <h1 style={{ marginBottom: 'var(--sp-2)', color: accent }}>{heading}</h1>
-      <p style={{ color: 'var(--steam-400)', marginBottom: 'var(--sp-8)' }}>
-        Log in to the {ROLE_LABEL[role]} portal.
-      </p>
-      <form onSubmit={onSubmit} className="stack" style={{ gap: 'var(--sp-4)' }}>
-        {error && <div className="form-error-banner">{error}</div>}
-        <div className="field">
-          <label htmlFor="email">Email</label>
+    <div className="mx-auto max-w-md px-6 py-16">
+      <h1 className={`mb-2 font-display text-2xl font-bold ${accentClass}`}>{heading}</h1>
+      <p className="mb-8 text-steam-400">Log in to the {ROLE_LABEL[role]} portal.</p>
+      <form onSubmit={onSubmit} className="space-y-4">
+        {error && <div className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>}
+        <div>
+          <label htmlFor="email" className="mb-1 block text-sm font-medium text-steam-400">
+            Email
+          </label>
           <input
             id="email"
             type="email"
@@ -94,10 +94,13 @@ export function PortalLogin({ role, heading, accent, signupHref }: PortalLoginPr
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-md border border-iron-700 bg-iron-800 px-3 py-2.5 text-steam-100 outline-none focus:border-ember"
           />
         </div>
-        <div className="field">
-          <label htmlFor="password">Password</label>
+        <div>
+          <label htmlFor="password" className="mb-1 block text-sm font-medium text-steam-400">
+            Password
+          </label>
           <input
             id="password"
             type="password"
@@ -105,9 +108,14 @@ export function PortalLogin({ role, heading, accent, signupHref }: PortalLoginPr
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-md border border-iron-700 bg-iron-800 px-3 py-2.5 text-steam-100 outline-none focus:border-ember"
           />
         </div>
-        <button type="submit" className="btn btn-primary btn-block" disabled={submitting}>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full rounded-md bg-ember py-3 font-semibold text-iron-900 transition-colors hover:bg-[#ff6a43] disabled:opacity-50"
+        >
           {submitting ? 'Logging in…' : 'Log in'}
         </button>
       </form>
@@ -115,8 +123,11 @@ export function PortalLogin({ role, heading, accent, signupHref }: PortalLoginPr
       <GoogleSignInButton onClick={onGoogleClick} submitting={googleSubmitting} />
 
       {signupHref && (
-        <p style={{ marginTop: 'var(--sp-6)', fontSize: 14, color: 'var(--steam-400)' }}>
-          No account? <Link to={signupHref}>Sign up</Link>
+        <p className="mt-6 text-sm text-steam-400">
+          No account?{' '}
+          <Link to={signupHref} className="text-ember hover:underline">
+            Sign up
+          </Link>
         </p>
       )}
     </div>
@@ -124,15 +135,15 @@ export function PortalLogin({ role, heading, accent, signupHref }: PortalLoginPr
 }
 
 export function CustomerLogin() {
-  return <PortalLogin role="CUSTOMER" heading="Customer log in" accent="var(--ember)" signupHref="/signup" />;
+  return <PortalLogin role="CUSTOMER" heading="Customer log in" accentClass="text-ember" signupHref="/signup" />;
 }
 
 export function PublisherLogin() {
   return (
-    <PortalLogin role="PUBLISHER" heading="Publisher log in" accent="var(--teal)" signupHref="/publisher/signup" />
+    <PortalLogin role="PUBLISHER" heading="Publisher log in" accentClass="text-teal" signupHref="/publisher/signup" />
   );
 }
 
 export function AdminLogin() {
-  return <PortalLogin role="ADMIN" heading="Admin log in" accent="var(--violet)" />;
+  return <PortalLogin role="ADMIN" heading="Admin log in" accentClass="text-violet" />;
 }

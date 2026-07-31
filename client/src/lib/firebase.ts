@@ -14,8 +14,10 @@ const app = isGoogleSignInEnabled ? initializeApp(config) : null;
 const provider = new GoogleAuthProvider();
 // Not always granted by default — request explicitly so the ID token's
 // email claim is actually populated (confirmed missing without this).
-provider.addScope('email');
-provider.addScope('profile');
+// Fully-qualified scope URIs, not the bare 'email'/'profile' short names —
+// the canonical form Firebase's own docs use for addScope().
+provider.addScope('https://www.googleapis.com/auth/userinfo.email');
+provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
 // Google reuses a cached consent decision and won't re-show the permission
 // screen just because we added a scope — force it so email actually gets
 // granted (confirmed: without this, the ID token kept coming back with no

@@ -14,6 +14,7 @@ dist/
 build/
 server/dist/
 client/dist/
+*.tsbuildinfo
 
 # Prisma
 server/prisma/*.db

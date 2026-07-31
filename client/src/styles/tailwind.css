@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+/* GameForge brand tokens, expressed as Tailwind v4 theme keys so utility
+   classes (bg-ember, text-iron-400, font-display, rounded-lg, ...) resolve
+   to the same palette as the existing tokens.css design system. Values are
+   the dark-theme defaults; :root[data-theme="light"] below overrides them
+   for the light toggle, same pattern as tokens.css. */
+@theme {
+  --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  --color-ember: #f2542d;
+  --color-ember-text-on: #12161f;
+  --color-teal: #2dd4bf;
+  --color-violet: #a78bfa;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --color-info: #60a5fa;
+
+  --color-forge-black: #0b0e14;
+  --color-iron-900: #12161f;
+  --color-iron-800: #1a1f2b;
+  --color-iron-700: #262c3a;
+  --color-iron-600: #333b4d;
+  --color-steam-100: #f4f6fb;
+  --color-steam-400: #9aa3b8;
+  --color-steam-600: #5b6478;
+}
+
+:root[data-theme='light'] {
+  --color-forge-black: #eef0f5;
+  --color-iron-900: #ffffff;
+  --color-iron-800: #e7e9f0;
+  --color-iron-700: #d6dae3;
+  --color-iron-600: #c1c6d4;
+  --color-steam-100: #12161f;
+  --color-steam-400: #5b6478;
+  --color-steam-600: #8891a3;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --color-forge-black: #eef0f5;
+    --color-iron-900: #ffffff;
+    --color-iron-800: #e7e9f0;
+    --color-iron-700: #d6dae3;
+    --color-iron-600: #c1c6d4;
+    --color-steam-100: #12161f;
+    --color-steam-400: #5b6478;
+    --color-steam-600: #8891a3;
+  }
+}

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { OrderStatus, Role } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { requireAuth, requireRole } from '../middleware/auth';
@@ -6,69 +6,71 @@ import { asyncHandler } from '../lib/asyncHandler';
 
 export const analyticsRouter = Router();
 
-// One sales chart, computed from local Order rows — never a live
-// Surfboard call, per CLAUDE.md.
+// Publisher-scoped sales — same "derived from Order/OrderItem, no separate
+// write" rule as the admin queries above, just filtered down to the calling
+// publisher's own games instead of every publisher.
+async function requirePublisher(req: Request) {
+  return prisma.publisher.findUnique({ where: { userId: req.user!.id } });
+}
+
 analyticsRouter.get(
-  '/sales',
+  '/publisher/sales',
   requireAuth,
-  requireRole(Role.ADMIN),
-  asyncHandler(async (_req, res) => {
-    const orders = await prisma.order.findMany({
-      where: { status: OrderStatus.PAID },
-      select: { totalAmount: true, createdAt: true },
-      orderBy: { createdAt: 'asc' },
+  requireRole(Role.PUBLISHER),
+  asyncHandler(async (req, res) => {
+    const publisher = await requirePublisher(req);
+    if (!publisher) {
+      return res.status(403).json({ error: 'You have not registered as a publisher yet' });
+    }
+
+    const items = await prisma.orderItem.findMany({
+      where: { order: { status: OrderStatus.PAID }, game: { publisherId: publisher.id } },
+      select: { priceAtPurchase: true, order: { select: { createdAt: true } } },
     });
 
-    const byDay = new Map<string, { date: string; totalRevenue: number; orderCount: number }>();
-    for (const order of orders) {
-      const date = order.createdAt.toISOString().slice(0, 10);
-      const existing = byDay.get(date) ?? { date, totalRevenue: 0, orderCount: 0 };
-      existing.totalRevenue += order.totalAmount;
-      existing.orderCount += 1;
+    const byDay = new Map<string, { date: string; totalRevenue: number; unitsSold: number }>();
+    for (const item of items) {
+      const date = item.order.createdAt.toISOString().slice(0, 10);
+      const existing = byDay.get(date) ?? { date, totalRevenue: 0, unitsSold: 0 };
+      existing.totalRevenue += item.priceAtPurchase;
+      existing.unitsSold += 1;
       byDay.set(date, existing);
     }
 
-    res.json({ sales: Array.from(byDay.values()) });
+    const sales = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));
+    res.json({ sales });
   })
 );
 
-// One revenue-per-publisher table, derived from OrderItem/Game — no
-// separate write anywhere, per CLAUDE.md's post-payment sequence step 7.
 analyticsRouter.get(
-  '/revenue-by-publisher',
+  '/publisher/by-game',
   requireAuth,
-  requireRole(Role.ADMIN),
-  asyncHandler(async (_req, res) => {
-    const items = await prisma.orderItem.findMany({
-      where: { order: { status: OrderStatus.PAID } },
-      select: {
-        priceAtPurchase: true,
-        game: {
-          select: {
-            publisherId: true,
-            publisher: { select: { user: { select: { email: true, firstName: true, lastName: true } } } },
-          },
-        },
-      },
-    });
-
-    const byPublisher = new Map<
-      string,
-      { publisherId: string; publisherEmail: string; totalRevenue: number; gamesSold: number }
-    >();
-    for (const item of items) {
-      const publisherId = item.game.publisherId;
-      const existing = byPublisher.get(publisherId) ?? {
-        publisherId,
-        publisherEmail: item.game.publisher.user.email,
-        totalRevenue: 0,
-        gamesSold: 0,
-      };
-      existing.totalRevenue += item.priceAtPurchase;
-      existing.gamesSold += 1;
-      byPublisher.set(publisherId, existing);
+  requireRole(Role.PUBLISHER),
+  asyncHandler(async (req, res) => {
+    const publisher = await requirePublisher(req);
+    if (!publisher) {
+      return res.status(403).json({ error: 'You have not registered as a publisher yet' });
     }
 
-    res.json({ revenueByPublisher: Array.from(byPublisher.values()) });
+    const items = await prisma.orderItem.findMany({
+      where: { order: { status: OrderStatus.PAID }, game: { publisherId: publisher.id } },
+      select: { priceAtPurchase: true, game: { select: { id: true, title: true } } },
+    });
+
+    const byGame = new Map<string, { gameId: string; title: string; unitsSold: number; totalRevenue: number }>();
+    for (const item of items) {
+      const existing = byGame.get(item.game.id) ?? {
+        gameId: item.game.id,
+        title: item.game.title,
+        unitsSold: 0,
+        totalRevenue: 0,
+      };
+      existing.unitsSold += 1;
+      existing.totalRevenue += item.priceAtPurchase;
+      byGame.set(item.game.id, existing);
+    }
+
+    const games = Array.from(byGame.values()).sort((a, b) => b.totalRevenue - a.totalRevenue);
+    res.json({ games });
   })
 );

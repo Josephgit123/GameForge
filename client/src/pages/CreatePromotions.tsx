@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { api, ApiError } from '../lib/api';
 import type { Promotion, PromotionType } from '../lib/types';
 
-export function AdminPromotions() {
+export function CreatePromotions() {
   const { token } = useAuth();
   const [promotions, setPromotions] = useState<Promotion[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +63,7 @@ export function AdminPromotions() {
 
   return (
     <div className="page">
-      <h1 style={{ marginBottom: 'var(--sp-8)' }}>Promotions</h1>
+      <h1 style={{ marginBottom: 'var(--sp-8)' }}>Create promotions</h1>
 
       <form onSubmit={onCreate} className="panel-card stack" style={{ gap: 'var(--sp-4)', marginBottom: 'var(--sp-8)' }}>
         {error && <div className="form-error-banner">{error}</div>}

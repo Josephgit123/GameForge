@@ -5,7 +5,7 @@ import { api, ApiError } from '../lib/api';
 import { formatMoney } from '../lib/money';
 import type { GiftCard } from '../lib/types';
 
-export function AdminGiftCards() {
+export function IssueGiftCards() {
   const { token } = useAuth();
   const [giftCards, setGiftCards] = useState<GiftCard[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export function AdminGiftCards() {
 
   return (
     <div className="page">
-      <h1 style={{ marginBottom: 'var(--sp-8)' }}>Gift cards</h1>
+      <h1 style={{ marginBottom: 'var(--sp-8)' }}>Issue gift cards</h1>
 
       <form onSubmit={onCreate} className="panel-card stack" style={{ gap: 'var(--sp-4)', marginBottom: 'var(--sp-8)' }}>
         {error && <div className="form-error-banner">{error}</div>}
