@@ -3,6 +3,7 @@ export type GameStatus = 'DRAFT' | 'PUBLISHED' | 'DELISTED';
 export type OrderStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
 export type RefundStatus = 'REQUESTED' | 'APPROVED' | 'COMPLETED' | 'REJECTED';
 export type PromotionType = 'PERCENTAGE' | 'FIXED_AMOUNT';
+export type SubscriptionStatus = 'PENDING_ACTIVATION' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED';
 
 export interface User {
   id: string;
@@ -140,6 +141,33 @@ export interface AdminTransaction {
   customer: { email: string };
   items: { id: string; gameId: string; priceAtPurchase: number; game: { title: string } }[];
   refunds: Refund[];
+}
+
+export interface Subscription {
+  id: string;
+  status: SubscriptionStatus;
+  cardBrand: string | null;
+  truncatedPan: string | null;
+  amount: number;
+  currency: string;
+  discountPercent: number;
+  currentPeriodEnd: string | null;
+  createdAt: string;
+  cancelledAt: string | null;
+}
+
+export interface SubscriptionCharge {
+  id: string;
+  surfboardOrderId: string | null;
+  status: 'PENDING' | 'PAID' | 'FAILED';
+  amount: number;
+  currency: string;
+  createdAt: string;
+}
+
+export interface AdminSubscription extends Subscription {
+  customer: { email: string };
+  charges: SubscriptionCharge[];
 }
 
 // Real-world reference data from RAWG (see server/src/routes/discover.ts).

@@ -3,6 +3,7 @@ import { OrderStatus, PaymentStatus, RefundStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { verifyWebhookSignature } from '../lib/webhookSignature';
 import { emailReceipt, registerOnlineTerminal, SurfboardApiError } from '../services/surfboard';
+import { activateSubscription } from './subscriptions';
 
 export const webhooksRouter = Router();
 
@@ -91,7 +92,16 @@ export async function handlePaymentCompleted(data: PaymentCompletedData) {
     return;
   }
 
-  console.warn(`webhook: no local Order or Refund for surfboardOrderId ${data.orderId}`);
+  // Not a game purchase or a refund either — check whether it's a
+  // GameForge+ signup order (see routes/subscriptions.ts#activateSubscription,
+  // the same dual poll-or-webhook reconciliation as game purchases).
+  const subscription = await prisma.subscription.findFirst({ where: { pendingOrderId: data.orderId } });
+  if (subscription) {
+    await activateSubscription(data.orderId);
+    return;
+  }
+
+  console.warn(`webhook: no local Order, Refund, or Subscription for surfboardOrderId ${data.orderId}`);
 }
 
 // Fires once a publisher's real Surfboard merchant is created (KYB

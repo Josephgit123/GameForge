@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { GameStatus, GiftCardStatus, OrderStatus, PromotionType } from '@prisma/client';
+import { GameStatus, GiftCardStatus, OrderStatus, PromotionType, SubscriptionStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { requireAuth } from '../middleware/auth';
 import { createOrder, getOrderStatus, getReceiptLink, initiatePayment, SurfboardApiError } from '../services/surfboard';
@@ -100,7 +100,16 @@ checkoutRouter.post(
           : Math.min(promotion.value, rawTotal);
     }
 
-    const totalAmount = rawTotal - discount;
+    // GameForge+ subscribers get a flat discount on top of any promo,
+    // applied to the already-promo-discounted amount — stacks rather than
+    // competing with promo codes.
+    const subscription = await prisma.subscription.findUnique({ where: { customerId: req.user!.id } });
+    const subscriberDiscount =
+      subscription?.status === SubscriptionStatus.ACTIVE
+        ? Math.round(((rawTotal - discount) * subscription.discountPercent) / 100)
+        : 0;
+    const totalCampaign = discount + subscriberDiscount;
+    const totalAmount = rawTotal - totalCampaign;
 
     // v1 rule (CLAUDE.md): a gift card must fully cover the (already
     // discounted) order or it isn't applied at all — no partial-split.
@@ -143,7 +152,7 @@ checkoutRouter.post(
           quantity: 1,
           amount: { regular: g.price, total: g.price, currency: numericCurrency },
         })),
-        totalOrderAmount: { regular: rawTotal, total: totalAmount, campaign: discount, currency: numericCurrency },
+        totalOrderAmount: { regular: rawTotal, total: totalAmount, campaign: totalCampaign, currency: numericCurrency },
         customer: user
           ? { person: { name: { firstName: user.firstName, lastName: user.lastName }, email: user.email } }
           : undefined,

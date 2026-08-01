@@ -70,6 +70,24 @@ enum PromotionType {
   FIXED_AMOUNT
 }
 
+enum SubscriptionStatus {
+  // Signup order created, waiting for the customer to complete the hosted
+  // Payment Page and for the resulting token to be fetched — see
+  // routes/subscriptions.ts#activateSubscription.
+  PENDING_ACTIVATION
+  ACTIVE
+  // A renewal charge failed — subscriber keeps no further perks until
+  // resolved. No dunning/retry flow in v1, just a visible admin state.
+  PAST_DUE
+  CANCELLED
+}
+
+enum SubscriptionChargeStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
 model User {
   id           String @id @default(uuid())
   email        String @unique
@@ -81,6 +99,7 @@ model User {
   publisher      Publisher?
   orders         Order[]        @relation("CustomerOrders")
   libraryEntries LibraryEntry[]
+  subscription   Subscription?
 }
 
 model Publisher {
@@ -247,6 +266,52 @@ model PromotionUsage {
 
   promotion Promotion @relation(fields: [promotionId], references: [id])
   order     Order     @relation(fields: [orderId], references: [id])
+}
+
+// GameForge+ — a platform-level (not per-publisher) recurring discount
+// subscription. Surfboard has no native "subscriptions" object; this is
+// built on card tokenization + Merchant Initiated Transactions (MIT):
+// the signup charge runs through the normal PaymentPage flow with
+// enforceTokenization, then every renewal reuses the stored token against
+// a separately-registered MerchantInitiated terminal. One row per
+// customer ever — cancelling is terminal in v1, no resubscribe flow.
+model Subscription {
+  id     String             @id @default(uuid())
+  status SubscriptionStatus @default(PENDING_ACTIVATION)
+
+  // Card token captured off the signup order once it completes — this is
+  // what every renewal charge authorizes against instead of a card number.
+  surfboardTokenId String?
+  cardBrand        String?
+  truncatedPan     String?
+
+  amount          Int // recurring charge amount, minor units — snapshot at signup
+  currency        String
+  discountPercent Int // checkout discount while ACTIVE — snapshot at signup
+
+  // The signup order's Surfboard order id, so activation can be reconciled
+  // via poll (customer waiting on the confirmation page) or webhook —
+  // same dual-path pattern as Order/handlePaymentCompleted.
+  pendingOrderId   String?
+  currentPeriodEnd DateTime?
+  createdAt        DateTime  @default(now())
+  cancelledAt      DateTime?
+
+  customerId String @unique
+  customer   User   @relation(fields: [customerId], references: [id])
+  charges    SubscriptionCharge[]
+}
+
+model SubscriptionCharge {
+  id               String                   @id @default(uuid())
+  subscriptionId   String
+  surfboardOrderId String?
+  status           SubscriptionChargeStatus @default(PENDING)
+  amount           Int
+  currency         String
+  createdAt        DateTime                 @default(now())
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
 }
 
 model WebhookEvent {

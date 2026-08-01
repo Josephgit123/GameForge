@@ -18,6 +18,8 @@ import { PublisherGames } from './pages/PublisherGames';
 import { PublisherSales } from './pages/PublisherSales';
 import { PublisherOnboarding } from './pages/PublisherOnboarding';
 import { OrderConfirmation } from './pages/OrderConfirmation';
+import { Subscribe } from './pages/Subscribe';
+import { SubscriptionConfirmation } from './pages/SubscriptionConfirmation';
 import { OrderHistory } from './pages/OrderHistory';
 import { MyGames } from './pages/MyGames';
 import { Profile } from './pages/Profile';
@@ -28,6 +30,7 @@ import { ManageGames } from './pages/ManageGames';
 import { CreatePromotions } from './pages/CreatePromotions';
 import { IssueGiftCards } from './pages/IssueGiftCards';
 import { MonitorTransactions } from './pages/MonitorTransactions';
+import { ManageSubscriptions } from './pages/ManageSubscriptions';
 
 export default function App() {
   return (
@@ -54,6 +57,8 @@ export default function App() {
             <Route path="/orders/:orderId/confirmation" element={<OrderConfirmation />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/gift-cards" element={<GiftCardsInfo />} />
+            <Route path="/subscribe" element={<Subscribe />} />
+            <Route path="/subscription/confirmation" element={<SubscriptionConfirmation />} />
           </Route>
           <Route element={<RequireRole roles={['PUBLISHER']} />}>
             <Route path="/publisher/games" element={<PublisherGames />} />
@@ -69,6 +74,7 @@ export default function App() {
             <Route path="/admin/promotions" element={<CreatePromotions />} />
             <Route path="/admin/gift-cards" element={<IssueGiftCards />} />
             <Route path="/admin/transactions" element={<MonitorTransactions />} />
+            <Route path="/admin/subscriptions" element={<ManageSubscriptions />} />
           </Route>
         </Route>
       </Routes>

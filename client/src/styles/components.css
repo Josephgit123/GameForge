@@ -424,8 +424,6 @@
   z-index: 10;
 }
 .topnav-inner {
-  max-width: 1440px;
-  margin: 0 auto;
   padding: var(--sp-3) var(--sp-6);
   min-height: 64px;
   display: flex;

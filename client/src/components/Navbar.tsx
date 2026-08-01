@@ -44,6 +44,9 @@ export function Navbar() {
                 <NavLink to="/orders" className={navLinkClass}>
                   Orders
                 </NavLink>
+                <NavLink to="/subscribe" className={navLinkClass}>
+                  GameForge+
+                </NavLink>
               </>
             )}
           </nav>

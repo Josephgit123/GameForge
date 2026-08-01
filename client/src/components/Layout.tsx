@@ -99,6 +99,13 @@ function PortalNav() {
               >
                 Monitor Transactions
               </NavLink>
+              <NavLink
+                to="/admin/subscriptions"
+                className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                style={{ ['--portal-color' as string]: 'var(--violet)' }}
+              >
+                Manage Subscriptions
+              </NavLink>
             </>
           )}
           {(user?.role === 'ADMIN' || user?.role === 'PUBLISHER') && (

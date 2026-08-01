@@ -179,11 +179,20 @@ export interface RegisterOnlineTerminalResponse {
   message: string;
 }
 
-export function registerOnlineTerminal(merchantId: string, storeId: string) {
+// GameForge+ subscription renewals register a second terminal in
+// MerchantInitiated mode against the same demo store — the customer's
+// first (tokenizing) charge still goes through the normal PaymentPage
+// terminal; only the token-authorized renewals use this one (see
+// guides/online-payments/online-payment-terminals/merchant-initiated-transactions.md).
+export function registerOnlineTerminal(
+  merchantId: string,
+  storeId: string,
+  mode: 'PaymentPage' | 'MerchantInitiated' = 'PaymentPage'
+) {
   return request<RegisterOnlineTerminalResponse>(
     'POST',
     `/merchants/${merchantId}/stores/${storeId}/online-terminals`,
-    { onlineTerminalMode: 'PaymentPage' },
+    { onlineTerminalMode: mode },
     merchantId
   );
 }
@@ -237,6 +246,10 @@ export interface CreateOrderInput {
       paymentMethod: 'CARD' | 'CARD_NP' | 'KLARNA' | 'SWISH';
     };
     includeAdjustmentsForRefund?: boolean;
+    // GameForge+ signup order only: saves the card used as a reusable token
+    // (fetched afterward via getOrderTokens) for Merchant Initiated renewal
+    // charges. See guides/online-payments/post-payments/tokens.md.
+    enforceTokenization?: boolean;
   };
 }
 
@@ -273,6 +286,10 @@ export interface InitiatePaymentInput {
   terminalId?: string;
   paymentMethodParams?: {
     giftCardId?: string;
+    // GameForge+ renewal charges: the tokenId captured off the customer's
+    // signup order, authorized against the MerchantInitiated terminal —
+    // no card re-entry, no customer present.
+    tokenId?: string;
   };
 }
 
@@ -354,6 +371,31 @@ export interface OrderStatusResponse {
 
 export function getOrderStatus(merchantId: string, orderId: string) {
   return request<OrderStatusResponse>('GET', `/orders/${orderId}/status`, undefined, merchantId);
+}
+
+// --- Tokens ---
+// GET /orders/:orderId/tokens — only returns data for an order created with
+// enforceTokenization:true. Used once, right after a GameForge+ signup
+// order completes, to capture the reusable tokenId for renewal charges.
+
+export interface OrderTokenInfo {
+  cardBrand: string;
+  cardholderName?: string;
+  tokenId: string;
+  createdAt: string;
+  expiryMonth: number;
+  expiryYear: number;
+  truncatedPan: string;
+}
+
+export interface OrderTokensResponse {
+  status: string;
+  data: OrderTokenInfo[];
+  message: string;
+}
+
+export function getOrderTokens(merchantId: string, orderId: string) {
+  return request<OrderTokensResponse>('GET', `/orders/${orderId}/tokens`, undefined, merchantId);
 }
 
 // --- Receipts API ---

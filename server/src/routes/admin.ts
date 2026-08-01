@@ -1,8 +1,18 @@
 import { Router } from 'express';
-import { PublisherStatus, Role } from '@prisma/client';
+import { PublisherStatus, Role, SubscriptionStatus, SubscriptionChargeStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { asyncHandler } from '../lib/asyncHandler';
+import { createOrder, getOrderStatus, initiatePayment, SurfboardApiError } from '../services/surfboard';
+import { CURRENCY_NUMERIC_CODES } from './subscriptions';
+
+const MERCHANT_ID = process.env.SURFBOARD_DEMO_FALLBACK_MERCHANT_ID as string;
+const SUBSCRIPTION_TERMINAL_ID = process.env.SURFBOARD_SUBSCRIPTION_TERMINAL_ID as string;
+const SUBSCRIPTION_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 // Admin-only, cross-cutting endpoints that don't belong to any single
 // resource router: user/publisher management, an all-games view spanning
@@ -104,3 +114,117 @@ adminRouter.get(
     res.json({ orders });
   })
 );
+
+// --- GameForge+ subscriptions ---
+
+adminRouter.get(
+  '/subscriptions',
+  requireAuth,
+  requireRole(Role.ADMIN),
+  asyncHandler(async (_req, res) => {
+    const subscriptions = await prisma.subscription.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { customer: { select: { email: true } }, charges: { orderBy: { createdAt: 'desc' } } },
+    });
+    res.json({ subscriptions });
+  })
+);
+
+// Renewal charges have no background job/cron in this project (CLAUDE.md
+// keeps the stack boring) — an admin triggers this on demand, and it
+// charges every subscription whose currentPeriodEnd has already passed.
+// Real createOrder + initiatePayment(CTOKEN) calls per subscription, same
+// wrapper every other Surfboard call goes through.
+adminRouter.post(
+  '/subscriptions/process-renewals',
+  requireAuth,
+  requireRole(Role.ADMIN),
+  asyncHandler(async (_req, res) => {
+    const due = await prisma.subscription.findMany({
+      where: { status: SubscriptionStatus.ACTIVE, currentPeriodEnd: { lte: new Date() } },
+    });
+
+    const results = [];
+    for (const subscription of due) {
+      results.push({ subscriptionId: subscription.id, succeeded: await chargeRenewal(subscription) });
+    }
+
+    res.json({
+      processed: results.length,
+      succeeded: results.filter((r) => r.succeeded).length,
+      results,
+    });
+  })
+);
+
+async function chargeRenewal(subscription: {
+  id: string;
+  amount: number;
+  currency: string;
+  surfboardTokenId: string | null;
+  currentPeriodEnd: Date | null;
+}): Promise<boolean> {
+  if (!subscription.surfboardTokenId) {
+    await prisma.subscriptionCharge.create({
+      data: { subscriptionId: subscription.id, status: SubscriptionChargeStatus.FAILED, amount: subscription.amount, currency: subscription.currency },
+    });
+    await prisma.subscription.update({ where: { id: subscription.id }, data: { status: SubscriptionStatus.PAST_DUE } });
+    return false;
+  }
+
+  const numericCurrency = CURRENCY_NUMERIC_CODES[subscription.currency] ?? '752';
+  let surfboardOrderId: string | undefined;
+  let completed = false;
+
+  try {
+    const order = await createOrder(MERCHANT_ID, {
+      'terminal$id': SUBSCRIPTION_TERMINAL_ID,
+      referenceId: `sub-renewal-${subscription.id}-${(subscription.currentPeriodEnd ?? new Date()).getTime()}`,
+      orderLines: [
+        {
+          id: 'gameforge-plus',
+          name: 'GameForge+ subscription renewal',
+          quantity: 1,
+          amount: { regular: subscription.amount, total: subscription.amount, currency: numericCurrency },
+        },
+      ],
+      totalOrderAmount: { regular: subscription.amount, total: subscription.amount, currency: numericCurrency },
+    });
+    surfboardOrderId = order.data.orderId;
+
+    await initiatePayment(MERCHANT_ID, {
+      orderId: surfboardOrderId,
+      paymentMethod: 'CTOKEN',
+      paymentMethodParams: { tokenId: subscription.surfboardTokenId },
+    });
+
+    // No webhook wired for renewal orders (they don't set callBackUrl) —
+    // this is a synchronous admin action, so poll directly instead.
+    for (let attempt = 0; attempt < 3 && !completed; attempt++) {
+      await sleep(1000);
+      const status = await getOrderStatus(MERCHANT_ID, surfboardOrderId);
+      completed = status.data.orderStatus === 'PAYMENT_COMPLETED';
+    }
+  } catch (err) {
+    console.error('Subscription renewal charge failed:', err instanceof SurfboardApiError ? err.body : err);
+  }
+
+  await prisma.subscriptionCharge.create({
+    data: {
+      subscriptionId: subscription.id,
+      surfboardOrderId,
+      status: completed ? SubscriptionChargeStatus.PAID : SubscriptionChargeStatus.FAILED,
+      amount: subscription.amount,
+      currency: subscription.currency,
+    },
+  });
+
+  await prisma.subscription.update({
+    where: { id: subscription.id },
+    data: completed
+      ? { status: SubscriptionStatus.ACTIVE, currentPeriodEnd: new Date((subscription.currentPeriodEnd ?? new Date()).getTime() + SUBSCRIPTION_INTERVAL_MS) }
+      : { status: SubscriptionStatus.PAST_DUE },
+  });
+
+  return completed;
+}

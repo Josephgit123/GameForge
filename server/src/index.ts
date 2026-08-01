@@ -14,6 +14,7 @@ import { libraryRouter } from './routes/library';
 import { adminRawgRouter } from './routes/admin-rawg';
 import { discoverRouter } from './routes/discover';
 import { adminRouter } from './routes/admin';
+import { subscriptionsRouter } from './routes/subscriptions';
 
 const app = express();
 const port = process.env.PORT ?? 4000;
@@ -45,6 +46,7 @@ app.use('/library', libraryRouter);
 app.use('/admin/rawg', adminRawgRouter);
 app.use('/discover', discoverRouter);
 app.use('/admin', adminRouter);
+app.use('/subscriptions', subscriptionsRouter);
 
 app.get('/health/db', async (_req, res) => {
   try {
