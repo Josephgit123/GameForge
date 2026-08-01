@@ -15,7 +15,11 @@ import { CustomerLogin, PublisherLogin, AdminLogin } from './pages/Login';
 import { Signup } from './pages/Signup';
 import { PublisherSignup } from './pages/PublisherSignup';
 import { PublisherGames } from './pages/PublisherGames';
-import { PublisherSales } from './pages/PublisherSales';
+import { PublisherDashboard } from './pages/PublisherDashboard';
+import { PublisherOrders } from './pages/PublisherOrders';
+import { PublisherAnalytics } from './pages/PublisherAnalytics';
+import { PublisherStoreManagement } from './pages/PublisherStoreManagement';
+import { PublisherSettings } from './pages/PublisherSettings';
 import { PublisherOnboarding } from './pages/PublisherOnboarding';
 import { OrderConfirmation } from './pages/OrderConfirmation';
 import { Subscribe } from './pages/Subscribe';
@@ -61,8 +65,12 @@ export default function App() {
             <Route path="/subscription/confirmation" element={<SubscriptionConfirmation />} />
           </Route>
           <Route element={<RequireRole roles={['PUBLISHER']} />}>
+            <Route path="/publisher/dashboard" element={<PublisherDashboard />} />
             <Route path="/publisher/games" element={<PublisherGames />} />
-            <Route path="/publisher/sales" element={<PublisherSales />} />
+            <Route path="/publisher/orders" element={<PublisherOrders />} />
+            <Route path="/publisher/analytics" element={<PublisherAnalytics />} />
+            <Route path="/publisher/store" element={<PublisherStoreManagement />} />
+            <Route path="/publisher/settings" element={<PublisherSettings />} />
             <Route path="/publisher/onboarding" element={<PublisherOnboarding />} />
           </Route>
           <Route element={<RequireRole roles={['ADMIN', 'PUBLISHER']} />}>

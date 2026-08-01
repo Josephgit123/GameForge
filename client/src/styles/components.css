@@ -424,7 +424,7 @@
   z-index: 10;
 }
 .topnav-inner {
-  padding: var(--sp-3) var(--sp-6);
+  padding: var(--sp-3) var(--sp-8);
   min-height: 64px;
   display: grid;
   /* Outer columns are equal fractions regardless of how wide the brand vs.

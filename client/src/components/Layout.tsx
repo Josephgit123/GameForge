@@ -47,18 +47,46 @@ function PortalNav() {
           {user?.role === 'PUBLISHER' && (
             <>
               <NavLink
+                to="/publisher/dashboard"
+                className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                style={{ ['--portal-color' as string]: 'var(--teal)' }}
+              >
+                Dashboard
+              </NavLink>
+              <NavLink
                 to="/publisher/games"
                 className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
                 style={{ ['--portal-color' as string]: 'var(--teal)' }}
               >
-                Manage Products
+                My Games
               </NavLink>
               <NavLink
-                to="/publisher/sales"
+                to="/publisher/orders"
                 className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
                 style={{ ['--portal-color' as string]: 'var(--teal)' }}
               >
-                View Sales
+                Orders
+              </NavLink>
+              <NavLink
+                to="/publisher/analytics"
+                className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                style={{ ['--portal-color' as string]: 'var(--teal)' }}
+              >
+                Analytics
+              </NavLink>
+              <NavLink
+                to="/publisher/store"
+                className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                style={{ ['--portal-color' as string]: 'var(--teal)' }}
+              >
+                Store Management
+              </NavLink>
+              <NavLink
+                to="/publisher/settings"
+                className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                style={{ ['--portal-color' as string]: 'var(--teal)' }}
+              >
+                Settings
               </NavLink>
             </>
           )}
@@ -108,7 +136,7 @@ function PortalNav() {
               </NavLink>
             </>
           )}
-          {(user?.role === 'ADMIN' || user?.role === 'PUBLISHER') && (
+          {user?.role === 'ADMIN' && (
             <NavLink
               to="/admin/refunds"
               className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}

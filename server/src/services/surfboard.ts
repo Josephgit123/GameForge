@@ -444,3 +444,127 @@ export interface ReceiptLinkResponse {
 export function getReceiptLink(merchantId: string, id: string) {
   return request<ReceiptLinkResponse>('GET', `/receipts/${id}/link`, undefined, merchantId);
 }
+
+// --- Merchants API: Fetch Merchant Details ---
+// GET /merchants/:merchantId — confirmed live. The documented createdAt/
+// totalNumberOfTransaction/lastTransactionAt fields are NOT actually
+// returned by the sandbox for a TEST_MERCHANT (confirmed by calling this
+// against a real onboarded merchant) — typed as optional/absent rather than
+// assumed present, since the docs overstate what's really there.
+
+export interface MerchantDetailsResponse {
+  status: string;
+  data: {
+    merchantId: string;
+    partnerId: string;
+    merchantName: string;
+    merchantLanguage: string;
+    merchantLogoUrl?: string;
+    email: string;
+    companyId: string;
+    countryCode: string;
+    mccCode: number;
+    phoneNumber: string;
+    merchantType: string;
+    currencyCode: string;
+    acquirerMID: string;
+    address: {
+      careOf: string | null;
+      addressLine1: string;
+      addressLine2: string | null;
+      addressLine3: string | null;
+      city: string;
+      countryCode: string;
+      postalCode: string;
+    };
+    createdAt?: string;
+    totalNumberOfTransaction?: string;
+    totalAmountOfTransaction?: string;
+    lastTransactionAt?: string | null;
+  };
+  message: string;
+}
+
+export function getMerchantDetails(merchantId: string) {
+  return request<MerchantDetailsResponse>('GET', `/merchants/${merchantId}`, undefined, merchantId);
+}
+
+// --- Payment Methods API ---
+// GET/POST /merchants/:merchantId/payment-methods — confirmed live.
+// Activation body is boolean flags per method (not an array/list), and the
+// response reports success/error per method individually — a single call
+// can partially succeed.
+
+export interface PaymentMethodEntry {
+  paymentMethodId: string;
+  paymentMethod: string;
+}
+
+export interface PaymentMethodsResponse {
+  status: string;
+  data: PaymentMethodEntry[];
+  message: string;
+}
+
+export function getPaymentMethods(merchantId: string) {
+  return request<PaymentMethodsResponse>('GET', `/merchants/${merchantId}/payment-methods`, undefined, merchantId);
+}
+
+export interface ActivatePaymentMethodsInput {
+  card?: boolean;
+  amex?: boolean;
+  swish?: boolean;
+  klarna?: boolean;
+  b2binv?: boolean;
+  acc2acc?: boolean;
+  vipps?: boolean;
+  mobilepay?: boolean;
+}
+
+export interface ActivatePaymentMethodsResponse {
+  status: string;
+  data: { method: string; status: string; paymentMethodId?: string; message?: string }[];
+  message: string;
+}
+
+export function activatePaymentMethods(merchantId: string, input: ActivatePaymentMethodsInput) {
+  return request<ActivatePaymentMethodsResponse>('POST', `/merchants/${merchantId}/payment-methods`, input, merchantId);
+}
+
+// --- Branding API (merchant level) ---
+// GET/PATCH /merchants/:merchantId/branding — confirmed live (a real
+// accentColor update round-tripped correctly). Only the merchant-level
+// endpoints are wrapped — store/partner/terminal-level branding aren't used
+// anywhere in this app.
+
+export interface MerchantBranding {
+  backgroundColor?: string;
+  brandColor?: string;
+  footerColor?: string;
+  accentColor?: string;
+  rectShape?: string;
+  fontType?: string;
+  logoUrl?: string;
+  iconUrl?: string;
+  primaryCoverImage?: string;
+  secondaryCoverImage?: string;
+}
+
+export interface BrandingResponse {
+  status: string;
+  data: MerchantBranding;
+  message: string;
+}
+
+export function getBranding(merchantId: string) {
+  return request<BrandingResponse>('GET', `/merchants/${merchantId}/branding`, undefined, merchantId);
+}
+
+export interface UpdateBrandingResponse {
+  status: string;
+  message: string;
+}
+
+export function updateBranding(merchantId: string, input: MerchantBranding) {
+  return request<UpdateBrandingResponse>('PATCH', `/merchants/${merchantId}/branding`, input, merchantId);
+}

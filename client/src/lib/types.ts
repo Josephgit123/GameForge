@@ -68,6 +68,9 @@ export interface Order {
   createdAt: string;
   items: OrderItem[];
   refunds: Refund[];
+  // Already present on the backend's Order model/response — not previously
+  // modeled client-side. Which merchant actually processed this order.
+  surfboardMerchantId?: string | null;
 }
 
 export interface LibraryEntry {
@@ -170,6 +173,62 @@ export interface SubscriptionCharge {
 export interface AdminSubscription extends Subscription {
   customer: { email: string };
   charges: SubscriptionCharge[];
+}
+
+export interface MerchantAddress {
+  careOf: string | null;
+  addressLine1: string;
+  addressLine2: string | null;
+  addressLine3: string | null;
+  city: string;
+  countryCode: string;
+  postalCode: string;
+}
+
+export interface MerchantDetails {
+  merchantId: string;
+  partnerId: string;
+  merchantName: string;
+  merchantLanguage: string;
+  merchantLogoUrl?: string;
+  email: string;
+  companyId: string;
+  countryCode: string;
+  mccCode: number;
+  phoneNumber: string;
+  merchantType: string;
+  currencyCode: string;
+  acquirerMID: string;
+  address: MerchantAddress;
+  createdAt?: string;
+  totalNumberOfTransaction?: string;
+  totalAmountOfTransaction?: string;
+  lastTransactionAt?: string | null;
+}
+
+export interface PaymentMethodEntry {
+  paymentMethodId: string;
+  paymentMethod: string;
+}
+
+export interface ActivatePaymentMethodResult {
+  method: string;
+  status: string;
+  paymentMethodId?: string;
+  message?: string;
+}
+
+export interface MerchantBranding {
+  backgroundColor?: string;
+  brandColor?: string;
+  footerColor?: string;
+  accentColor?: string;
+  rectShape?: string;
+  fontType?: string;
+  logoUrl?: string;
+  iconUrl?: string;
+  primaryCoverImage?: string;
+  secondaryCoverImage?: string;
 }
 
 // Real-world reference data from RAWG (see server/src/routes/discover.ts).
