@@ -398,6 +398,27 @@ export function getOrderTokens(merchantId: string, orderId: string) {
   return request<OrderTokensResponse>('GET', `/orders/${orderId}/tokens`, undefined, merchantId);
 }
 
+// --- Stores API ---
+// GET /stores/:storeId — confirmed live: MERCHANT-ID header, no path
+// segment (the intuitive /merchants/:merchantId/stores/:storeId 404s,
+// same MERCHANT-ID-as-header convention as Orders/Payments).
+
+export interface StoreDetailsResponse {
+  status: string;
+  data: {
+    storeId: string;
+    merchantId: string;
+    name: string;
+    status: string;
+    onlineOnboardingStatus?: string;
+  };
+  message: string;
+}
+
+export function getStoreDetails(merchantId: string, storeId: string) {
+  return request<StoreDetailsResponse>('GET', `/stores/${storeId}`, undefined, merchantId);
+}
+
 // --- Receipts API ---
 // PUT/GET /receipts/{id} — {id} accepts a Transaction ID, Payment ID, or
 // Order ID interchangeably. Only the two endpoints relevant to a purely

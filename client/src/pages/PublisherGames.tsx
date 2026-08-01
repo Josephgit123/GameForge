@@ -117,6 +117,12 @@ export function PublisherGames() {
             <>
               <span style={{ fontSize: 15, color: 'var(--steam-400)' }}>Surfboard merchant ID</span>
               <div className="mono" style={{ fontSize: 16 }}>{merchantStatus.surfboardMerchantId}</div>
+              {merchantStatus.merchantVerified && (
+                <div style={{ fontSize: 15, color: 'var(--success)' }}>Merchant status: Verified</div>
+              )}
+              {merchantStatus.storeName && (
+                <div style={{ fontSize: 15, color: 'var(--steam-400)' }}>Store: {merchantStatus.storeName}</div>
+              )}
             </>
           ) : merchantStatus.surfboardApplicationId ? (
             <>

@@ -120,6 +120,8 @@ export interface PublisherStatusInfo {
   surfboardMerchantId: string | null;
   surfboardApplicationId: string | null;
   webKybUrl: string | null;
+  storeName: string | null;
+  merchantVerified: boolean;
 }
 
 export interface AdminUser {

@@ -426,9 +426,13 @@
 .topnav-inner {
   padding: var(--sp-3) var(--sp-6);
   min-height: 64px;
-  display: flex;
+  display: grid;
+  /* Outer columns are equal fractions regardless of how wide the brand vs.
+     the right-side controls are, so the middle nav-links column always
+     sits at the bar's true geometric center — not just centered within
+     whatever space happened to be left over between the other two. */
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: var(--sp-4);
 }
 .brand {
@@ -437,7 +441,7 @@
   font-size: 20px;
   text-decoration: none;
   color: var(--steam-100);
-  flex-shrink: 0;
+  justify-self: start;
 }
 .brand .ember-dot {
   color: var(--ember);
@@ -446,8 +450,11 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: var(--sp-2) var(--sp-3);
-  flex: 1;
+}
+.topnav-inner > .row {
+  justify-self: end;
 }
 .nav-link {
   font-size: 16px;

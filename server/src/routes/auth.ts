@@ -7,7 +7,7 @@ import { signToken } from '../lib/jwt';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { asyncHandler } from '../lib/asyncHandler';
 import { FirebaseNotConfiguredError, verifyGoogleIdToken } from '../lib/firebaseAdmin';
-import { createMerchant, SurfboardApiError } from '../services/surfboard';
+import { createMerchant, getStoreDetails, SurfboardApiError } from '../services/surfboard';
 
 export const authRouter = Router();
 
@@ -228,10 +228,30 @@ authRouter.get('/me', requireAuth, asyncHandler(async (req, res) => {
 // merchantId once assigned, and the application/KYB link while still
 // pending. Same fields Manage Users shows an admin, scoped to the caller.
 authRouter.get('/me/publisher', requireAuth, requireRole(Role.PUBLISHER), asyncHandler(async (req, res) => {
-  const publisher = await prisma.publisher.findUnique({ where: { userId: req.user!.id } });
+  const publisher = await prisma.publisher.findUnique({
+    where: { userId: req.user!.id },
+    include: { stores: true },
+  });
   if (!publisher) {
     return res.status(404).json({ error: 'You have not registered as a publisher yet' });
   }
+
+  // Live Surfboard call, best-effort — real store name/onboarding status,
+  // not anything cached locally (Store has no name column). A failure here
+  // just means the panel shows the merchant ID without the store details.
+  let storeName: string | null = null;
+  let merchantVerified = false;
+  const store = publisher.stores[0];
+  if (publisher.surfboardMerchantId && store) {
+    try {
+      const details = await getStoreDetails(publisher.surfboardMerchantId, store.surfboardStoreId);
+      storeName = details.data.name;
+      merchantVerified = details.data.onlineOnboardingStatus === 'APPROVED';
+    } catch (err) {
+      console.error('Fetch store details failed:', err instanceof SurfboardApiError ? err.body : err);
+    }
+  }
+
   res.json({
     publisher: {
       id: publisher.id,
@@ -239,6 +259,8 @@ authRouter.get('/me/publisher', requireAuth, requireRole(Role.PUBLISHER), asyncH
       surfboardMerchantId: publisher.surfboardMerchantId,
       surfboardApplicationId: publisher.surfboardApplicationId,
       webKybUrl: publisher.webKybUrl,
+      storeName,
+      merchantVerified,
     },
   });
 }));
