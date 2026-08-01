@@ -2,7 +2,7 @@
 .btn {
   font-family: var(--font-body);
   font-weight: 500;
-  font-size: 14px;
+  font-size: 16px;
   border-radius: var(--r-md);
   height: 40px;
   padding: 0 var(--sp-6);
@@ -55,12 +55,12 @@
 }
 .btn-sm {
   height: 32px;
-  font-size: 13px;
+  font-size: 15px;
   padding: 0 var(--sp-4);
 }
 .btn-lg {
   height: 48px;
-  font-size: 15px;
+  font-size: 17px;
   padding: 0 var(--sp-8);
 }
 .btn-block {
@@ -133,7 +133,7 @@
 .game-card .title {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 15px;
+  font-size: 17px;
 }
 .game-card-locked {
   cursor: default;
@@ -157,7 +157,7 @@
   justify-content: center;
   background: rgba(11, 14, 20, 0.7);
   color: var(--steam-100);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   opacity: 0;
   transition: opacity 0.15s ease;
@@ -168,7 +168,7 @@
 }
 .game-card .price {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 15px;
   color: var(--steam-400);
 }
 
@@ -271,21 +271,21 @@
 }
 .store-hero-eyebrow {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ember);
 }
 .store-hero-info h1 {
   margin: 0;
-  font-size: 26px;
+  font-size: 28px;
   color: #f4f6fb;
 }
 .store-hero-info p {
   margin: 0;
   flex: 1;
   color: #9aa3b8;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.6;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -295,7 +295,7 @@
 }
 .store-hero-price {
   font-family: var(--font-mono);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   color: #f4f6fb;
 }
@@ -305,7 +305,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   padding: 4px 10px;
   border-radius: var(--r-full);
@@ -340,7 +340,7 @@
   gap: var(--sp-2);
 }
 .field label {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   color: var(--steam-400);
 }
@@ -348,7 +348,7 @@
 .field textarea,
 .field select {
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   color: var(--steam-100);
   background: var(--iron-900);
   border: 1px solid var(--iron-700);
@@ -375,7 +375,7 @@
   border-color: var(--danger);
 }
 .field .hint {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--steam-600);
 }
 .field.error .hint {
@@ -391,7 +391,7 @@
   color: var(--danger);
   border-radius: var(--r-sm);
   padding: var(--sp-3) var(--sp-4);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 /* ---------- layout helpers ---------- */
@@ -436,7 +436,7 @@
 .brand {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 18px;
+  font-size: 20px;
   text-decoration: none;
   color: var(--steam-100);
   flex-shrink: 0;
@@ -452,7 +452,7 @@
   flex: 1;
 }
 .nav-link {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   color: var(--steam-400);
   text-decoration: none;
@@ -484,7 +484,7 @@
   height: 32px;
   padding: 0 var(--sp-3) 0 var(--sp-2);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--steam-400);
 }
@@ -507,7 +507,7 @@
   box-shadow: 0 0 0 1px var(--ember-dim), 0 16px 40px rgba(0, 0, 0, 0.5);
   border-radius: var(--r-md);
   padding: var(--sp-3) var(--sp-4);
-  font-size: 13px;
+  font-size: 15px;
   position: fixed;
   bottom: var(--sp-8);
   right: var(--sp-8);

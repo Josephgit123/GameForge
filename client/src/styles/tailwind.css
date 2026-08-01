@@ -6,19 +6,37 @@
    the dark-theme defaults; :root[data-theme="light"] below overrides them
    for the light toggle, same pattern as tokens.css. */
 @theme {
-  --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+  --font-display: 'Orbitron', 'Space Grotesk', 'Segoe UI', sans-serif;
   --font-body: 'Inter', 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+
+  /* Bumped up from Tailwind's defaults across the board — same relative
+     scale/hierarchy, just a size step larger, so every text-* utility reads
+     bigger without any component needing to change which class it uses. */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.375rem;
+  --text-base: 1.0625rem;
+  --text-base--line-height: 1.625rem;
+  --text-lg: 1.1875rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.3125rem;
+  --text-xl--line-height: 1.875rem;
+  --text-2xl: 1.625rem;
+  --text-2xl--line-height: 2.125rem;
+  --text-3xl: 2rem;
+  --text-3xl--line-height: 2.375rem;
 
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
   --radius-xl: 20px;
 
-  --color-ember: #f2542d;
+  --color-ember: #22d3ee;
   --color-ember-text-on: #12161f;
   --color-teal: #2dd4bf;
-  --color-violet: #a78bfa;
+  --color-violet: #e879f9;
   --color-success: #34d399;
   --color-warning: #fbbf24;
   --color-danger: #f87171;
@@ -43,6 +61,11 @@
   --color-steam-100: #12161f;
   --color-steam-400: #5b6478;
   --color-steam-600: #8891a3;
+  /* neon cyan/fuchsia wash out against a light background — darker,
+     more saturated shades of the same hues for text/link/button contrast */
+  --color-ember: #155e75;
+  --color-ember-text-on: #f4f6fb;
+  --color-violet: #a21caf;
 }
 
 @media (prefers-color-scheme: light) {
@@ -55,5 +78,8 @@
     --color-steam-100: #12161f;
     --color-steam-400: #5b6478;
     --color-steam-600: #8891a3;
+    --color-ember: #155e75;
+    --color-ember-text-on: #f4f6fb;
+    --color-violet: #a21caf;
   }
 }

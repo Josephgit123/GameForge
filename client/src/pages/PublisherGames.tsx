@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { formatMoney } from '../lib/money';
-import type { Game } from '../lib/types';
+import type { Game, PublisherStatusInfo } from '../lib/types';
 
 function statusBadgeClass(status: Game['status']) {
   if (status === 'PUBLISHED') return 'badge badge-success';
@@ -14,6 +14,7 @@ function statusBadgeClass(status: Game['status']) {
 export function PublisherGames() {
   const { token } = useAuth();
   const [games, setGames] = useState<Game[] | null>(null);
+  const [merchantStatus, setMerchantStatus] = useState<PublisherStatusInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
 
@@ -37,6 +38,13 @@ export function PublisherGames() {
   }
 
   useEffect(refresh, [token]);
+
+  useEffect(() => {
+    api
+      .get<{ publisher: PublisherStatusInfo }>('/auth/me/publisher', token)
+      .then((res) => setMerchantStatus(res.publisher))
+      .catch(() => {});
+  }, [token]);
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
@@ -96,12 +104,40 @@ export function PublisherGames() {
 
   return (
     <div className="page">
-      <div className="row" style={{ justifyContent: 'space-between', marginBottom: 'var(--sp-8)' }}>
+      <div className="row" style={{ justifyContent: 'space-between', marginBottom: 'var(--sp-4)' }}>
         <h1>Manage products</h1>
         <button type="button" className="btn btn-primary" onClick={() => setFormOpen((v) => !v)}>
           {formOpen ? 'Cancel' : 'Add game'}
         </button>
       </div>
+
+      {merchantStatus && (
+        <div className="panel-card" style={{ marginBottom: 'var(--sp-8)' }}>
+          {merchantStatus.surfboardMerchantId ? (
+            <>
+              <span style={{ fontSize: 15, color: 'var(--steam-400)' }}>Surfboard merchant ID</span>
+              <div className="mono" style={{ fontSize: 16 }}>{merchantStatus.surfboardMerchantId}</div>
+            </>
+          ) : merchantStatus.surfboardApplicationId ? (
+            <>
+              <span style={{ fontSize: 15, color: 'var(--steam-400)' }}>
+                Surfboard onboarding in progress — application {merchantStatus.surfboardApplicationId}
+              </span>
+              {merchantStatus.webKybUrl && (
+                <div>
+                  <a href={merchantStatus.webKybUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--ember)' }}>
+                    Complete KYB verification →
+                  </a>
+                </div>
+              )}
+            </>
+          ) : (
+            <span style={{ fontSize: 15, color: 'var(--danger)' }}>
+              No Surfboard merchant application on file — your sales use the shared demo merchant for now.
+            </span>
+          )}
+        </div>
+      )}
 
       {formOpen && (
         <form onSubmit={onCreate} className="panel-card stack" style={{ gap: 'var(--sp-4)', marginBottom: 'var(--sp-8)' }}>
@@ -204,7 +240,7 @@ export function PublisherGames() {
                 />
                 <div className="stack" style={{ gap: 'var(--sp-1)' }}>
                   <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>{game.title}</span>
-                  <span className="mono" style={{ fontSize: 13, color: 'var(--steam-400)' }}>
+                  <span className="mono" style={{ fontSize: 15, color: 'var(--steam-400)' }}>
                     {formatMoney(game.price, game.currency)}
                   </span>
                 </div>

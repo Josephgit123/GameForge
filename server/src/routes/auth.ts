@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { PublisherStatus, Role, type User } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { signToken } from '../lib/jwt';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireRole } from '../middleware/auth';
 import { asyncHandler } from '../lib/asyncHandler';
 import { FirebaseNotConfiguredError, verifyGoogleIdToken } from '../lib/firebaseAdmin';
 import { createMerchant, SurfboardApiError } from '../services/surfboard';
@@ -222,4 +222,23 @@ authRouter.get('/me', requireAuth, asyncHandler(async (req, res) => {
     return res.status(404).json({ error: 'User not found' });
   }
   res.json({ user: toPublicUser(user) });
+}));
+
+// Publisher: their own Surfboard onboarding status — status, real
+// merchantId once assigned, and the application/KYB link while still
+// pending. Same fields Manage Users shows an admin, scoped to the caller.
+authRouter.get('/me/publisher', requireAuth, requireRole(Role.PUBLISHER), asyncHandler(async (req, res) => {
+  const publisher = await prisma.publisher.findUnique({ where: { userId: req.user!.id } });
+  if (!publisher) {
+    return res.status(404).json({ error: 'You have not registered as a publisher yet' });
+  }
+  res.json({
+    publisher: {
+      id: publisher.id,
+      status: publisher.status,
+      surfboardMerchantId: publisher.surfboardMerchantId,
+      surfboardApplicationId: publisher.surfboardApplicationId,
+      webKybUrl: publisher.webKybUrl,
+    },
+  });
 }));

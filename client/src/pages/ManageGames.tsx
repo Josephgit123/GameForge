@@ -51,7 +51,7 @@ export function ManageGames() {
             <div key={game.id} className="panel-card row" style={{ justifyContent: 'space-between', gap: 'var(--sp-4)' }}>
               <div className="stack" style={{ gap: 'var(--sp-1)' }}>
                 <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>{game.title}</span>
-                <span className="mono" style={{ fontSize: 13, color: 'var(--steam-400)' }}>
+                <span className="mono" style={{ fontSize: 15, color: 'var(--steam-400)' }}>
                   {game.publisherName} · {formatMoney(game.price, game.currency)}
                 </span>
               </div>

@@ -44,19 +44,19 @@ export function AdminRefunds() {
           {refunds.map((refund) => (
             <div key={refund.id} className="panel-card">
               <div className="row" style={{ justifyContent: 'space-between', marginBottom: 'var(--sp-3)' }}>
-                <span className="mono" style={{ fontSize: 13, color: 'var(--steam-400)' }}>
+                <span className="mono" style={{ fontSize: 15, color: 'var(--steam-400)' }}>
                   {refund.order.customer.email}
                 </span>
                 <span className="badge badge-warning">{refund.status}</span>
               </div>
               <div className="stack" style={{ gap: 'var(--sp-1)', marginBottom: 'var(--sp-3)' }}>
                 {refund.order.items.map((item) => (
-                  <span key={item.id} style={{ fontSize: 14 }}>
+                  <span key={item.id} style={{ fontSize: 16 }}>
                     {item.game.title}
                   </span>
                 ))}
               </div>
-              <p style={{ fontSize: 13, color: 'var(--steam-400)', marginBottom: 'var(--sp-3)' }}>
+              <p style={{ fontSize: 15, color: 'var(--steam-400)', marginBottom: 'var(--sp-3)' }}>
                 Reason: {refund.reason}
               </p>
               <div

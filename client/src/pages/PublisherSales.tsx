@@ -34,12 +34,12 @@ export function PublisherSales() {
       {byGame && (
         <div className="row" style={{ gap: 'var(--sp-4)', marginBottom: 'var(--sp-8)' }}>
           <div className="panel-card" style={{ flex: 1 }}>
-            <span style={{ fontSize: 13, color: 'var(--steam-400)' }}>Total revenue</span>
-            <div className="mono" style={{ fontSize: 24, fontWeight: 600 }}>{formatMoney(totalRevenue, 'SEK')}</div>
+            <span style={{ fontSize: 15, color: 'var(--steam-400)' }}>Total revenue</span>
+            <div className="mono" style={{ fontSize: 26, fontWeight: 600 }}>{formatMoney(totalRevenue, 'SEK')}</div>
           </div>
           <div className="panel-card" style={{ flex: 1 }}>
-            <span style={{ fontSize: 13, color: 'var(--steam-400)' }}>Units sold</span>
-            <div className="mono" style={{ fontSize: 24, fontWeight: 600 }}>{totalUnits}</div>
+            <span style={{ fontSize: 15, color: 'var(--steam-400)' }}>Units sold</span>
+            <div className="mono" style={{ fontSize: 26, fontWeight: 600 }}>{totalUnits}</div>
           </div>
         </div>
       )}
@@ -53,7 +53,7 @@ export function PublisherSales() {
           <div className="stack" style={{ gap: 'var(--sp-3)' }}>
             {sales.map((point) => (
               <div key={point.date} className="row" style={{ gap: 'var(--sp-4)', alignItems: 'center' }}>
-                <span className="mono" style={{ width: 100, fontSize: 12, color: 'var(--steam-400)' }}>
+                <span className="mono" style={{ width: 100, fontSize: 14, color: 'var(--steam-400)' }}>
                   {point.date}
                 </span>
                 <div style={{ flex: 1, background: 'var(--iron-800)', borderRadius: 'var(--r-sm)', overflow: 'hidden' }}>
@@ -67,10 +67,10 @@ export function PublisherSales() {
                     }}
                   />
                 </div>
-                <span className="mono" style={{ width: 100, fontSize: 13, textAlign: 'right' }}>
+                <span className="mono" style={{ width: 100, fontSize: 15, textAlign: 'right' }}>
                   {formatMoney(point.totalRevenue, 'SEK')}
                 </span>
-                <span className="mono" style={{ width: 80, fontSize: 12, color: 'var(--steam-400)' }}>
+                <span className="mono" style={{ width: 80, fontSize: 14, color: 'var(--steam-400)' }}>
                   {point.unitsSold} unit{point.unitsSold === 1 ? '' : 's'}
                 </span>
               </div>

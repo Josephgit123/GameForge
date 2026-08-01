@@ -35,8 +35,8 @@ export function MonitorTransactions() {
             <div key={order.id} className="panel-card">
               <div className="row" style={{ justifyContent: 'space-between', marginBottom: 'var(--sp-3)' }}>
                 <div className="stack" style={{ gap: 'var(--sp-1)' }}>
-                  <span className="mono" style={{ fontSize: 13, color: 'var(--steam-400)' }}>{order.customer.email}</span>
-                  <span className="mono" style={{ fontSize: 12, color: 'var(--steam-600)' }}>
+                  <span className="mono" style={{ fontSize: 15, color: 'var(--steam-400)' }}>{order.customer.email}</span>
+                  <span className="mono" style={{ fontSize: 14, color: 'var(--steam-600)' }}>
                     {new Date(order.createdAt).toLocaleString()}
                     {order.surfboardOrderId && ` · ${order.surfboardOrderId}`}
                   </span>
@@ -45,7 +45,7 @@ export function MonitorTransactions() {
               </div>
               <div className="stack" style={{ gap: 'var(--sp-1)', marginBottom: 'var(--sp-3)' }}>
                 {order.items.map((item) => (
-                  <span key={item.id} style={{ fontSize: 14 }}>
+                  <span key={item.id} style={{ fontSize: 16 }}>
                     {item.game.title} — {formatMoney(item.priceAtPurchase, order.currency)}
                   </span>
                 ))}

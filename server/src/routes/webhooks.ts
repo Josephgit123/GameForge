@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { OrderStatus, PaymentStatus, RefundStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { verifyWebhookSignature } from '../lib/webhookSignature';
-import { emailReceipt, SurfboardApiError } from '../services/surfboard';
+import { emailReceipt, registerOnlineTerminal, SurfboardApiError } from '../services/surfboard';
 
 export const webhooksRouter = Router();
 
@@ -13,6 +13,12 @@ interface PaymentCompletedData {
   orderId: string;
   paymentId: string;
   paymentMethod: string;
+}
+
+interface MerchantCreatedData {
+  applicationId: string;
+  merchantId: string;
+  storeId: string;
 }
 
 webhooksRouter.post('/surfboard', async (req, res) => {
@@ -39,16 +45,19 @@ webhooksRouter.post('/surfboard', async (req, res) => {
         data: {
           surfboardEventId,
           eventType: eventType ?? 'unknown',
-          surfboardReferenceId: data?.orderId ?? 'unknown',
+          surfboardReferenceId: data?.orderId ?? data?.applicationId ?? 'unknown',
           payload: req.body,
         },
       }));
 
     if (eventType === 'order.paymentcompleted') {
       await handlePaymentCompleted(data);
+    } else if (eventType === 'application.merchantCreated') {
+      await handleMerchantCreated(data);
     }
-    // Other event types (order.paymentfailed, order.paymentcancelled, etc.)
-    // aren't handled yet — acknowledged but not acted on.
+    // Other event types (order.paymentfailed, order.paymentcancelled, the
+    // earlier merchant-application stages, etc.) aren't handled yet —
+    // acknowledged but not acted on.
 
     await prisma.webhookEvent.update({ where: { id: webhookEvent.id }, data: { processedAt: new Date() } });
     res.status(200).json({ status: 'ok' });
@@ -85,6 +94,47 @@ export async function handlePaymentCompleted(data: PaymentCompletedData) {
   console.warn(`webhook: no local Order or Refund for surfboardOrderId ${data.orderId}`);
 }
 
+// Fires once a publisher's real Surfboard merchant is created (KYB
+// approved). Captures merchantId/storeId onto the Publisher/Store rows,
+// then registers an online terminal for that store — an order can't be
+// created against a store with no terminal, same requirement the shared
+// demo merchant needed (see services/surfboard.ts#registerOnlineTerminal).
+// checkout.ts reads Store.surfboardTerminalId to route that publisher's own
+// sales through their own merchant instead of the shared fallback.
+export async function handleMerchantCreated(data: MerchantCreatedData) {
+  const publisher = await prisma.publisher.findFirst({ where: { surfboardApplicationId: data.applicationId } });
+  if (!publisher) {
+    console.warn(`webhook: no local Publisher for applicationId ${data.applicationId}`);
+    return;
+  }
+  if (publisher.surfboardMerchantId) {
+    return; // already processed — same belt-and-suspenders pattern as handleOriginalOrderCompleted
+  }
+
+  await prisma.publisher.update({
+    where: { id: publisher.id },
+    data: { surfboardMerchantId: data.merchantId },
+  });
+
+  const store = await prisma.store.create({
+    data: { publisherId: publisher.id, surfboardStoreId: data.storeId },
+  });
+
+  // Best-effort — if terminal registration fails, the publisher still has a
+  // real merchantId on file; checkout.ts falls back to the shared demo
+  // merchant/terminal until a terminal exists for this store.
+  try {
+    const terminal = await registerOnlineTerminal(data.merchantId, data.storeId);
+    await prisma.store.update({ where: { id: store.id }, data: { surfboardTerminalId: terminal.data.terminalId } });
+  } catch (err) {
+    if (err instanceof SurfboardApiError) {
+      console.error('Register online terminal failed:', err.status, JSON.stringify(err.body));
+    } else {
+      console.error('Register online terminal failed:', err);
+    }
+  }
+}
+
 async function handleOriginalOrderCompleted(
   order: {
     id: string;
@@ -92,6 +142,7 @@ async function handleOriginalOrderCompleted(
     customerId: string;
     items: { gameId: string }[];
     customer: { email: string };
+    surfboardMerchantId: string | null;
   },
   data: PaymentCompletedData
 ) {
@@ -135,7 +186,7 @@ async function handleOriginalOrderCompleted(
   // purchase. The customer can still see everything in Order History either
   // way; this is a convenience delivery, not the source of truth.
   try {
-    await emailReceipt(MERCHANT_ID, data.orderId, order.customer.email);
+    await emailReceipt(order.surfboardMerchantId ?? MERCHANT_ID, data.orderId, order.customer.email);
   } catch (err) {
     if (err instanceof SurfboardApiError) {
       console.error('Email receipt failed:', err.status, JSON.stringify(err.body));

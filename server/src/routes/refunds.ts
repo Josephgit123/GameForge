@@ -116,8 +116,8 @@ refundsRouter.patch(
     }
 
     try {
-      const refundOrder = await createOrder(MERCHANT_ID, {
-        'terminal$id': TERMINAL_ID,
+      const refundOrder = await createOrder(refund.order.surfboardMerchantId ?? MERCHANT_ID, {
+        'terminal$id': refund.order.surfboardTerminalId ?? TERMINAL_ID,
         referenceId: `refund-${refund.id}`,
         orderLines: refund.order.items.map((item) => ({
           id: item.gameId,

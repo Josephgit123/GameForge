@@ -99,9 +99,13 @@ model Publisher {
 }
 
 model Store {
-  id               String @id @default(uuid())
-  publisherId      String
-  surfboardStoreId String
+  id                  String  @id @default(uuid())
+  publisherId         String
+  surfboardStoreId    String
+  // Registered once, right after MERCHANT_CREATED — an order can't be
+  // created against a store with no online terminal (see
+  // services/surfboard.ts#registerOnlineTerminal).
+  surfboardTerminalId String?
 
   publisher Publisher @relation(fields: [publisherId], references: [id])
 }
@@ -138,6 +142,12 @@ model Order {
   totalAmount      Int
   currency         String
   createdAt        DateTime    @default(now())
+  // Which Surfboard merchant/terminal actually processed this order — the
+  // publisher's own once onboarded, otherwise the shared demo fallback.
+  // Refunds/receipts must reuse the SAME merchant an order was created
+  // under, not whichever is "current" at the time.
+  surfboardMerchantId String?
+  surfboardTerminalId String?
 
   customer           User                 @relation("CustomerOrders", fields: [customerId], references: [id])
   items              OrderItem[]

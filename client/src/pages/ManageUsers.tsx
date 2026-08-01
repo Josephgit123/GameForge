@@ -60,9 +60,9 @@ export function ManageUsers() {
                   <span style={{ fontWeight: 600 }}>
                     {u.firstName} {u.lastName}
                   </span>
-                  <span className="mono" style={{ fontSize: 13, color: 'var(--steam-400)' }}>{u.email}</span>
+                  <span className="mono" style={{ fontSize: 15, color: 'var(--steam-400)' }}>{u.email}</span>
                   {u.publisher!.surfboardApplicationId ? (
-                    <span className="mono" style={{ fontSize: 12, color: 'var(--steam-600)' }}>
+                    <span className="mono" style={{ fontSize: 14, color: 'var(--steam-600)' }}>
                       Surfboard application: {u.publisher!.surfboardApplicationId}
                       {u.publisher!.webKybUrl && (
                         <>
@@ -74,7 +74,7 @@ export function ManageUsers() {
                       )}
                     </span>
                   ) : (
-                    <span className="mono" style={{ fontSize: 12, color: 'var(--danger)' }}>
+                    <span className="mono" style={{ fontSize: 14, color: 'var(--danger)' }}>
                       No Surfboard application on file (Create Merchant failed at signup)
                     </span>
                   )}
@@ -113,7 +113,12 @@ export function ManageUsers() {
                 <span>
                   {u.firstName} {u.lastName}
                 </span>
-                <span className="mono" style={{ fontSize: 13, color: 'var(--steam-400)' }}>{u.email}</span>
+                <span className="mono" style={{ fontSize: 15, color: 'var(--steam-400)' }}>{u.email}</span>
+                {u.publisher?.surfboardMerchantId && (
+                  <span className="mono" style={{ fontSize: 14, color: 'var(--steam-600)' }}>
+                    Merchant ID: {u.publisher.surfboardMerchantId}
+                  </span>
+                )}
               </div>
               <div className="row" style={{ gap: 'var(--sp-3)', alignItems: 'center' }}>
                 {u.publisher && <span className={publisherStatusBadgeClass(u.publisher.status)}>{u.publisher.status}</span>}

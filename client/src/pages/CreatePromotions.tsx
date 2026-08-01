@@ -111,10 +111,10 @@ export function CreatePromotions() {
           {promotions.map((promo) => (
             <div key={promo.id} className="panel-card row" style={{ justifyContent: 'space-between' }}>
               <span className="mono" style={{ fontWeight: 600 }}>{promo.code}</span>
-              <span style={{ fontSize: 13, color: 'var(--steam-400)' }}>
+              <span style={{ fontSize: 15, color: 'var(--steam-400)' }}>
                 {promo.type === 'PERCENTAGE' ? `${promo.value}% off` : `${(promo.value / 100).toFixed(2)} off`}
               </span>
-              <span className="mono" style={{ fontSize: 13, color: 'var(--steam-400)' }}>
+              <span className="mono" style={{ fontSize: 15, color: 'var(--steam-400)' }}>
                 {promo._count?.usages ?? 0} / {promo.usageLimit} used
               </span>
             </div>

@@ -115,7 +115,7 @@ function PortalNav() {
           <ThemeToggle />
           {user ? (
             <>
-              <span className="mono" style={{ fontSize: 13, color: 'var(--steam-400)' }}>
+              <span className="mono" style={{ fontSize: 15, color: 'var(--steam-400)' }}>
                 {user.email}
               </span>
               <button type="button" className="btn btn-ghost btn-sm" onClick={logout}>

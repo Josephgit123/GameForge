@@ -2,8 +2,9 @@ import { Router } from 'express';
 import { GameStatus, GiftCardStatus, OrderStatus, PromotionType } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { requireAuth } from '../middleware/auth';
-import { createOrder, getReceiptLink, initiatePayment, SurfboardApiError } from '../services/surfboard';
+import { createOrder, getOrderStatus, getReceiptLink, initiatePayment, SurfboardApiError } from '../services/surfboard';
 import { asyncHandler } from '../lib/asyncHandler';
+import { handlePaymentCompleted } from './webhooks';
 
 export const checkoutRouter = Router();
 
@@ -20,6 +21,23 @@ const CURRENCY_NUMERIC_CODES: Record<string, string> = {
 const MERCHANT_ID = process.env.SURFBOARD_DEMO_FALLBACK_MERCHANT_ID as string;
 const TERMINAL_ID = process.env.SURFBOARD_DEMO_TERMINAL_ID as string;
 const CLIENT_URL = process.env.CORS_ORIGIN as string;
+
+// A publisher only has their own real merchant/terminal once Surfboard's
+// application.merchantCreated webhook has fired for them (see webhooks.ts)
+// and a terminal was successfully registered for their store. Until then —
+// or if terminal registration failed — every sale falls back to the one
+// shared demo merchant, same as before this existed.
+async function resolveMerchantForPublisher(publisherId: string): Promise<{ merchantId: string; terminalId: string }> {
+  const publisher = await prisma.publisher.findUnique({
+    where: { id: publisherId },
+    include: { stores: true },
+  });
+  const store = publisher?.stores.find((s) => s.surfboardTerminalId);
+  if (publisher?.surfboardMerchantId && store?.surfboardTerminalId) {
+    return { merchantId: publisher.surfboardMerchantId, terminalId: store.surfboardTerminalId };
+  }
+  return { merchantId: MERCHANT_ID, terminalId: TERMINAL_ID };
+}
 
 checkoutRouter.post(
   '/',
@@ -43,6 +61,16 @@ checkoutRouter.post(
     if (!numericCurrency) {
       return res.status(500).json({ error: `No numeric currency code mapped for ${currency}` });
     }
+
+    // v1 rule: one publisher per order. Real per-publisher Surfboard
+    // merchants are single-merchant-scoped (Orders API can't split one
+    // order's payment across two merchants), so a mixed-publisher cart
+    // would have no single merchant to charge it under.
+    const publisherId = games[0].publisherId;
+    if (!games.every((g) => g.publisherId === publisherId)) {
+      return res.status(400).json({ error: 'All games in an order must be from the same publisher' });
+    }
+    const { merchantId, terminalId } = await resolveMerchantForPublisher(publisherId);
 
     const rawTotal = games.reduce((sum, g) => sum + g.price, 0);
     const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
@@ -93,6 +121,8 @@ checkoutRouter.post(
         status: OrderStatus.PENDING,
         totalAmount,
         currency,
+        surfboardMerchantId: merchantId,
+        surfboardTerminalId: terminalId,
         items: { create: games.map((g) => ({ gameId: g.id, priceAtPurchase: g.price })) },
       },
     });
@@ -104,8 +134,8 @@ checkoutRouter.post(
     }
 
     try {
-      const surfboardOrder = await createOrder(MERCHANT_ID, {
-        'terminal$id': TERMINAL_ID,
+      const surfboardOrder = await createOrder(merchantId, {
+        'terminal$id': terminalId,
         referenceId: order.id,
         orderLines: games.map((g) => ({
           id: g.id,
@@ -136,7 +166,7 @@ checkoutRouter.post(
         // Card payment method instead of redirecting to the hosted page.
         // Balance is deducted later, on webhook confirmation, not here
         // (see docs/API_INTEGRATION.md post-payment sequence step 4).
-        await initiatePayment(MERCHANT_ID, {
+        await initiatePayment(merchantId, {
           orderId: surfboardOrder.data.orderId,
           paymentMethod: 'GIFTCARD',
           paymentMethodParams: { giftCardId: giftCard.surfboardGiftCardId },
@@ -176,8 +206,12 @@ checkoutRouter.get(
   })
 );
 
-// Local order status — updated by the webhook receiver, not a live
-// Surfboard call. This is what the frontend short-polls during checkout.
+// Order status — this is what the frontend short-polls during checkout.
+// Normally updated by the webhook, but the webhook needs a public URL
+// (ngrok in local dev) that isn't always available. So if still PENDING
+// locally, ask Surfboard directly instead of only waiting for a push —
+// same completion logic (handlePaymentCompleted) either way, just
+// triggered by a pull instead of a push.
 checkoutRouter.get(
   '/:orderId/status',
   requireAuth,
@@ -186,7 +220,28 @@ checkoutRouter.get(
     if (!order || order.customerId !== req.user!.id) {
       return res.status(404).json({ error: 'Order not found' });
     }
-    res.json({ status: order.status });
+
+    if (order.status === OrderStatus.PENDING && order.surfboardOrderId) {
+      try {
+        const surfboardStatus = await getOrderStatus(order.surfboardMerchantId ?? MERCHANT_ID, order.surfboardOrderId);
+        const completedPayment = surfboardStatus.data.payments.find((p) => p.paymentStatus === 'PAYMENT_COMPLETED');
+        if (surfboardStatus.data.orderStatus === 'PAYMENT_COMPLETED' && completedPayment) {
+          await handlePaymentCompleted({
+            orderId: order.surfboardOrderId,
+            paymentId: completedPayment.paymentId,
+            paymentMethod: completedPayment.paymentMethod,
+          });
+        }
+      } catch (err) {
+        // Best-effort — if this check fails, fall back to whatever the
+        // local status already is; a later poll (or the webhook, if it
+        // does arrive) can still pick it up.
+        console.error('Order status poll failed:', err instanceof SurfboardApiError ? err.body : err);
+      }
+    }
+
+    const fresh = await prisma.order.findUnique({ where: { id: req.params.orderId } });
+    res.json({ status: fresh!.status });
   })
 );
 
@@ -206,7 +261,7 @@ checkoutRouter.get(
     }
 
     try {
-      const receipt = await getReceiptLink(MERCHANT_ID, order.surfboardOrderId);
+      const receipt = await getReceiptLink(order.surfboardMerchantId ?? MERCHANT_ID, order.surfboardOrderId);
       res.json({ receiptUrl: receipt.data.receiptURL });
     } catch (err) {
       if (err instanceof SurfboardApiError) {

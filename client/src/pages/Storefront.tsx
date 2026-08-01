@@ -168,15 +168,6 @@ export function Storefront() {
         />
       </div>
 
-      {!isCustomer && (
-        <p className="mx-auto max-w-7xl px-6 pt-6 text-sm text-steam-400">
-          <Link to="/login" className="text-ember hover:underline">
-            Log in as a customer
-          </Link>{' '}
-          to view games, wishlist, and purchase.
-        </p>
-      )}
-
       {topSellers && topSellers.length > 0 && (
         <Shelf title="Top Sellers" games={topSellers.map((t) => t.game)} ownedIds={ownedIds} interactive={isCustomer} />
       )}

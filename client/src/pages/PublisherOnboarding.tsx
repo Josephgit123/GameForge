@@ -33,9 +33,9 @@ export function PublisherOnboarding() {
             as a merchant — until then your account stays pending.
           </p>
           <div className="panel-card stack" style={{ gap: 'var(--sp-2)', marginBottom: 'var(--sp-6)' }}>
-            <span style={{ fontSize: 12, color: 'var(--steam-600)' }}>Application ID</span>
-            <span className="mono" style={{ fontSize: 14 }}>{onboarding.applicationId}</span>
-            <a href={onboarding.webKybUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--ember)', fontSize: 14 }}>
+            <span style={{ fontSize: 14, color: 'var(--steam-600)' }}>Application ID</span>
+            <span className="mono" style={{ fontSize: 16 }}>{onboarding.applicationId}</span>
+            <a href={onboarding.webKybUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--ember)', fontSize: 16 }}>
               Complete KYB verification →
             </a>
           </div>
