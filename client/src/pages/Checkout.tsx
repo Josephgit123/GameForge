@@ -7,13 +7,14 @@ import { api, ApiError } from '../lib/api';
 import { formatMoney } from '../lib/money';
 import { GamePoster } from '../components/GamePoster';
 import { hasRealCoverImage } from '../lib/posterArt';
-import type { Game } from '../lib/types';
+import type { Game, Subscription } from '../lib/types';
 
 export function Checkout() {
   const { gameIds, removeFromCart, clearCart } = useCart();
   const { token } = useAuth();
   const navigate = useNavigate();
   const [games, setGames] = useState<Game[] | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [promoCode, setPromoCode] = useState('');
   const [giftCardCode, setGiftCardCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -25,8 +26,22 @@ export function Checkout() {
     });
   }, [gameIds]);
 
+  useEffect(() => {
+    api
+      .get<{ subscription: Subscription | null }>('/subscriptions/mine', token)
+      .then((res) => setSubscription(res.subscription))
+      .catch(() => {});
+  }, [token]);
+
   const total = (games ?? []).reduce((sum, g) => sum + g.price, 0);
   const currency = games?.[0]?.currency ?? 'SEK';
+  // Preview only — the real discount (and any promo code) is computed and
+  // applied server-side at order-creation time (checkout.ts), this just
+  // mirrors that math so the total shown here matches what actually gets
+  // charged instead of silently differing from it.
+  const subscriberDiscount =
+    subscription?.status === 'ACTIVE' ? Math.round((total * subscription.discountPercent) / 100) : 0;
+  const finalTotal = total - subscriberDiscount;
 
   async function onPay() {
     setError(null);
@@ -113,10 +128,17 @@ export function Checkout() {
           <span>Subtotal</span>
           <span className="font-mono">{formatMoney(total, currency)}</span>
         </div>
+        {subscriberDiscount > 0 && (
+          <div className="mt-2 flex items-center justify-between text-sm text-teal">
+            <span>GameForge+ discount ({subscription!.discountPercent}%)</span>
+            <span className="font-mono">-{formatMoney(subscriberDiscount, currency)}</span>
+          </div>
+        )}
         <div className="mt-2 flex items-center justify-between border-t border-iron-700 pt-2 text-base font-semibold text-steam-100">
           <span>Total</span>
-          <span className="font-mono">{formatMoney(total, currency)}</span>
+          <span className="font-mono">{formatMoney(finalTotal, currency)}</span>
         </div>
+        <p className="mt-2 text-xs text-steam-600">Promo codes and gift cards apply at checkout, once validated.</p>
       </div>
 
       {error && <div className="mb-4 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>}

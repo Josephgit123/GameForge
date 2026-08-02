@@ -111,6 +111,11 @@ model Publisher {
   // verification link Surfboard expects the merchant to complete.
   webKybUrl              String?
   status                 PublisherStatus @default(PENDING)
+  // Settings page preference — persisted for real, but no notification
+  // channel actually exists in this project yet (no email service), so
+  // toggling this doesn't send anything. Honest state, not wired to a
+  // real send yet.
+  notifyOnNewOrder       Boolean         @default(false)
 
   user   User    @relation(fields: [userId], references: [id])
   stores Store[]

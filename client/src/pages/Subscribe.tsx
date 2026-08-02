@@ -37,14 +37,54 @@ export function Subscribe() {
     return <div className="mx-auto max-w-2xl px-6 py-16 text-center text-steam-400">Loading…</div>;
   }
 
-  if (subscription && subscription.status !== 'CANCELLED') {
+  if (subscription && (subscription.status === 'ACTIVE' || subscription.status === 'PAST_DUE')) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-16 text-center">
         <h1 className="mb-4 font-display text-2xl font-bold text-steam-100">You're already a GameForge+ member</h1>
         <p className="mb-6 text-steam-400">Manage your subscription from your profile.</p>
-        <Link to="/profile" className="rounded-md bg-ember px-5 py-2.5 font-semibold text-iron-900 hover:bg-[#ff6a43]">
-          Go to profile
-        </Link>
+        <div className="flex justify-center">
+          <Link
+            to="/profile"
+            className="rounded-md bg-ember px-5 py-2.5 font-semibold text-iron-900 hover:bg-[#ff6a43]"
+          >
+            Go to profile
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Payment was started but never actually completed — do NOT say "already
+  // a member" here, that's the bug this replaced. Either resume checking
+  // (in case payment did go through and just hasn't been reconciled yet)
+  // or abandon this attempt and start clean — POST /subscriptions/start
+  // already deletes a stale PENDING_ACTIVATION row for exactly this case.
+  if (subscription && subscription.status === 'PENDING_ACTIVATION') {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-16 text-center">
+        <h1 className="mb-4 font-display text-2xl font-bold text-steam-100">Subscription not completed yet</h1>
+        <p className="mb-6 text-steam-400">
+          You started a GameForge+ signup, but payment was never confirmed — you're not being charged and the discount
+          isn't active.
+        </p>
+        {error && <div className="mb-4 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>}
+        <div className="flex flex-col items-center gap-3">
+          <Link
+            to="/subscription/confirmation"
+            className="inline-block w-full max-w-xs rounded-md border border-iron-700 px-5 py-2.5 text-steam-100 hover:bg-iron-800"
+          >
+            I completed payment — check status
+          </Link>
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.98 }}
+            onClick={onSubscribe}
+            disabled={submitting}
+            className="w-full max-w-xs rounded-md bg-ember py-2.5 font-semibold text-iron-900 hover:bg-[#ff6a43] disabled:opacity-50"
+          >
+            {submitting ? 'Starting over…' : 'Start over'}
+          </motion.button>
+        </div>
       </div>
     );
   }

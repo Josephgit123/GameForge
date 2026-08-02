@@ -125,6 +125,7 @@ export interface PublisherStatusInfo {
   webKybUrl: string | null;
   storeName: string | null;
   merchantVerified: boolean;
+  notifyOnNewOrder: boolean;
 }
 
 export interface AdminUser {
