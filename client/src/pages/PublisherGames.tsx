@@ -20,6 +20,9 @@ interface GameFormValues {
   platform: string;
   screenshotUrlsInput: string;
   systemRequirements: string;
+  earlyAccess: boolean;
+  beta: boolean;
+  gameForgePlusExclusive: boolean;
 }
 
 const EMPTY_FORM: GameFormValues = {
@@ -32,6 +35,9 @@ const EMPTY_FORM: GameFormValues = {
   platform: '',
   screenshotUrlsInput: '',
   systemRequirements: '',
+  earlyAccess: false,
+  beta: false,
+  gameForgePlusExclusive: false,
 };
 
 function gameToForm(game: Game): GameFormValues {
@@ -45,10 +51,19 @@ function gameToForm(game: Game): GameFormValues {
     platform: game.platform ?? '',
     screenshotUrlsInput: game.screenshotUrls.join(', '),
     systemRequirements: game.systemRequirements ?? '',
+    earlyAccess: game.earlyAccess,
+    beta: game.beta,
+    gameForgePlusExclusive: game.gameForgePlusExclusive,
   };
 }
 
-function GameFormFields({ values, onChange }: { values: GameFormValues; onChange: (field: keyof GameFormValues, value: string) => void }) {
+function GameFormFields({
+  values,
+  onChange,
+}: {
+  values: GameFormValues;
+  onChange: (field: keyof GameFormValues, value: string | boolean) => void;
+}) {
   const inputClass =
     'w-full rounded-md border border-iron-700 bg-iron-800 px-3 py-2 text-sm text-steam-100 outline-none placeholder:text-steam-600 focus:border-ember';
   return (
@@ -131,6 +146,41 @@ function GameFormFields({ values, onChange }: { values: GameFormValues; onChange
           className={inputClass}
         />
       </div>
+      <div>
+        <label className="mb-2 block text-xs font-medium text-steam-400">GameForge+ tags</label>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex items-center gap-2 text-sm text-steam-100">
+            <input
+              type="checkbox"
+              checked={values.earlyAccess}
+              onChange={(e) => onChange('earlyAccess', e.target.checked)}
+              className="h-4 w-4 accent-gold"
+            />
+            Early Access
+          </label>
+          <label className="flex items-center gap-2 text-sm text-steam-100">
+            <input
+              type="checkbox"
+              checked={values.beta}
+              onChange={(e) => onChange('beta', e.target.checked)}
+              className="h-4 w-4 accent-info"
+            />
+            Beta
+          </label>
+          <label className="flex items-center gap-2 text-sm text-steam-100">
+            <input
+              type="checkbox"
+              checked={values.gameForgePlusExclusive}
+              onChange={(e) => onChange('gameForgePlusExclusive', e.target.checked)}
+              className="h-4 w-4 accent-violet"
+            />
+            GameForge+ Exclusive
+          </label>
+        </div>
+        <span className="mt-1 block text-xs text-steam-600">
+          Early Access games are locked behind an "Upgrade to GameForge+" prompt for non-members.
+        </span>
+      </div>
     </div>
   );
 }
@@ -149,6 +199,9 @@ function formToPayload(values: GameFormValues) {
       .map((url) => url.trim())
       .filter(Boolean),
     systemRequirements: values.systemRequirements || undefined,
+    earlyAccess: values.earlyAccess,
+    beta: values.beta,
+    gameForgePlusExclusive: values.gameForgePlusExclusive,
   };
 }
 

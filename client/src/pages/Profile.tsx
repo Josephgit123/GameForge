@@ -49,8 +49,15 @@ export function Profile() {
           {user.lastName[0]}
         </div>
         <div>
-          <div className="font-display text-lg font-semibold text-steam-100">
-            {user.firstName} {user.lastName}
+          <div className="flex items-center gap-2">
+            <div className="font-display text-lg font-semibold text-steam-100">
+              {user.firstName} {user.lastName}
+            </div>
+            {subscription?.status === 'ACTIVE' && (
+              <span className="flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-semibold text-gold">
+                ★ GameForge+
+              </span>
+            )}
           </div>
           <div className="text-sm text-steam-400">{user.email}</div>
           <div className="mt-1 inline-block rounded-full bg-iron-800 px-2 py-0.5 text-xs text-steam-400">
@@ -117,6 +124,37 @@ export function Profile() {
               </button>
             </>
           )}
+        </div>
+      )}
+
+      {subscription?.status === 'ACTIVE' && (
+        <div className="mb-6 rounded-2xl border border-violet/30 bg-iron-900 p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-display text-sm font-semibold uppercase tracking-widest text-violet">Store Credits</span>
+          </div>
+          <p className="mb-4 text-xs text-steam-600">
+            Illustrative UI only — there's no backend credit ledger yet, so these numbers aren't tied to real spend.
+          </p>
+          <div className="mb-4 grid grid-cols-3 gap-3 text-center">
+            <div className="rounded-lg bg-iron-800 p-3">
+              <div className="font-mono text-lg font-semibold text-steam-100">500</div>
+              <div className="text-[11px] text-steam-400">Monthly Credits</div>
+            </div>
+            <div className="rounded-lg bg-iron-800 p-3">
+              <div className="font-mono text-lg font-semibold text-steam-100">0</div>
+              <div className="text-[11px] text-steam-400">Credits Used</div>
+            </div>
+            <div className="rounded-lg bg-iron-800 p-3">
+              <div className="font-mono text-lg font-semibold text-violet">500</div>
+              <div className="text-[11px] text-steam-400">Credits Remaining</div>
+            </div>
+          </div>
+          <div>
+            <span className="mb-2 block text-xs font-medium text-steam-400">Credit History</span>
+            <p className="rounded-md border border-dashed border-iron-700 py-3 text-center text-xs text-steam-600">
+              No credit activity yet.
+            </p>
+          </div>
         </div>
       )}
 

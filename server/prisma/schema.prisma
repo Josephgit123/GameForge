@@ -153,6 +153,14 @@ model Game {
   systemRequirements String?
   createdAt          DateTime  @default(now())
 
+  // GameForge+ enhancement flags — purely additive, no change to purchase
+  // logic. earlyAccess/beta/gameForgePlusExclusive are publisher-settable;
+  // featured is admin-only (set via the admin Manage Games screen).
+  earlyAccess            Boolean @default(false)
+  beta                   Boolean @default(false)
+  gameForgePlusExclusive Boolean @default(false)
+  featured               Boolean @default(false)
+
   publisher      Publisher      @relation(fields: [publisherId], references: [id])
   orderItems     OrderItem[]
   libraryEntries LibraryEntry[]

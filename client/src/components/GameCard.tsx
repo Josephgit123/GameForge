@@ -47,6 +47,16 @@ export function GameCard({ game, interactive = true, owned = false }: GameCardPr
           </span>
         )}
 
+        {!owned && game.earlyAccess && (
+          <span className="absolute left-2 top-2 flex items-center gap-1 rounded-md bg-gold px-2 py-1 text-[10px] font-bold text-gold-text-on">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <rect x="4" y="11" width="16" height="10" rx="2" />
+              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+            </svg>
+            EARLY ACCESS
+          </span>
+        )}
+
         {interactive && <WishlistButton gameId={game.id} className="absolute right-2 top-2" />}
 
         {!interactive && (

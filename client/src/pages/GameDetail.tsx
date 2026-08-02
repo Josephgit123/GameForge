@@ -5,6 +5,7 @@ import { api, ApiError } from '../lib/api';
 import { formatMoney } from '../lib/money';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useSubscription } from '../context/SubscriptionContext';
 import { WishlistButton } from '../components/WishlistButton';
 import { GameCard } from '../components/GameCard';
 import { GamePoster } from '../components/GamePoster';
@@ -15,6 +16,7 @@ export function GameDetail() {
   const { id } = useParams<{ id: string }>();
   const { token } = useAuth();
   const { addToCart, isInCart } = useCart();
+  const { isActiveMember } = useSubscription();
   const navigate = useNavigate();
   const [game, setGame] = useState<Game | null>(null);
   const [related, setRelated] = useState<Game[]>([]);
@@ -91,6 +93,7 @@ export function GameDetail() {
   const realCover = hasRealCoverImage(game.coverImageUrl) ? [game.coverImageUrl] : [];
   const realScreenshots = game.screenshotUrls.filter(hasRealCoverImage);
   const gallery = [...realCover, ...realScreenshots];
+  const isLocked = game.earlyAccess && !isActiveMember;
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
@@ -126,10 +129,19 @@ export function GameDetail() {
           <p className="mb-4 text-sm text-steam-400">
             By {game.publisherName} · Released {new Date(game.createdAt).toLocaleDateString()}
           </p>
-          {(game.genre || game.platform) && (
-            <div className="mb-4 flex gap-2">
+          {(game.genre || game.platform || game.earlyAccess || game.beta || game.gameForgePlusExclusive) && (
+            <div className="mb-4 flex flex-wrap gap-2">
               {game.genre && <span className="rounded bg-iron-800 px-2 py-1 text-xs text-steam-400">{game.genre}</span>}
               {game.platform && <span className="rounded bg-iron-800 px-2 py-1 text-xs text-steam-400">{game.platform}</span>}
+              {game.earlyAccess && (
+                <span className="rounded bg-gold px-2 py-1 text-xs font-semibold text-gold-text-on">Early Access</span>
+              )}
+              {game.beta && (
+                <span className="rounded bg-info/20 px-2 py-1 text-xs font-semibold text-info">Beta</span>
+              )}
+              {game.gameForgePlusExclusive && (
+                <span className="rounded bg-violet/20 px-2 py-1 text-xs font-semibold text-violet">GameForge+ Exclusive</span>
+              )}
             </div>
           )}
           <p className="mb-8 leading-relaxed text-steam-400">{game.description}</p>
@@ -156,45 +168,68 @@ export function GameDetail() {
             {formatMoney(game.price, game.currency)}
           </div>
 
-          <div className="mb-4 space-y-2">
-            <input
-              type="text"
-              placeholder="Promo code"
-              value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-              className="w-full rounded-md border border-iron-700 bg-iron-800 px-3 py-2 text-sm text-steam-100 outline-none placeholder:text-steam-600 focus:border-ember"
-            />
-            <input
-              type="text"
-              placeholder="Gift card code"
-              value={giftCardCode}
-              onChange={(e) => setGiftCardCode(e.target.value)}
-              className="w-full rounded-md border border-iron-700 bg-iron-800 px-3 py-2 text-sm text-steam-100 outline-none placeholder:text-steam-600 focus:border-ember"
-            />
-          </div>
+          {isLocked ? (
+            <div className="rounded-lg border border-gold/40 bg-gold/10 p-4 text-center">
+              <div className="mb-2 flex justify-center text-gold">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                  <rect x="4" y="11" width="16" height="10" rx="2" />
+                  <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                </svg>
+              </div>
+              <p className="mb-1 font-display text-sm font-semibold text-gold">Early Access — Members Only</p>
+              <p className="mb-4 text-xs text-steam-400">
+                Upgrade to GameForge+ to purchase this game now, before general release.
+              </p>
+              <Link
+                to="/subscribe"
+                className="block w-full rounded-md bg-gold py-3 text-center font-semibold text-gold-text-on transition-colors hover:brightness-110"
+              >
+                Upgrade to GameForge+
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div className="mb-4 space-y-2">
+                <input
+                  type="text"
+                  placeholder="Promo code"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  className="w-full rounded-md border border-iron-700 bg-iron-800 px-3 py-2 text-sm text-steam-100 outline-none placeholder:text-steam-600 focus:border-ember"
+                />
+                <input
+                  type="text"
+                  placeholder="Gift card code"
+                  value={giftCardCode}
+                  onChange={(e) => setGiftCardCode(e.target.value)}
+                  className="w-full rounded-md border border-iron-700 bg-iron-800 px-3 py-2 text-sm text-steam-100 outline-none placeholder:text-steam-600 focus:border-ember"
+                />
+              </div>
 
-          {checkoutError && (
-            <div className="mb-4 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{checkoutError}</div>
+              {checkoutError && (
+                <div className="mb-4 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{checkoutError}</div>
+              )}
+
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.97 }}
+                onClick={onBuyNow}
+                disabled={startingCheckout}
+                className="mb-2 w-full rounded-md bg-ember py-3 font-semibold text-iron-900 transition-colors hover:bg-[#ff6a43] disabled:opacity-50"
+              >
+                {startingCheckout ? 'Starting checkout…' : 'Buy now'}
+              </motion.button>
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.97 }}
+                onClick={() => addToCart(game.id)}
+                disabled={isInCart(game.id)}
+                className="w-full rounded-md border border-iron-700 py-3 font-semibold text-steam-100 transition-colors hover:bg-iron-800 disabled:opacity-50"
+              >
+                {isInCart(game.id) ? 'In cart' : 'Add to cart'}
+              </motion.button>
+            </>
           )}
-
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.97 }}
-            onClick={onBuyNow}
-            disabled={startingCheckout}
-            className="mb-2 w-full rounded-md bg-ember py-3 font-semibold text-iron-900 transition-colors hover:bg-[#ff6a43] disabled:opacity-50"
-          >
-            {startingCheckout ? 'Starting checkout…' : 'Buy now'}
-          </motion.button>
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.97 }}
-            onClick={() => addToCart(game.id)}
-            disabled={isInCart(game.id)}
-            className="w-full rounded-md border border-iron-700 py-3 font-semibold text-steam-100 transition-colors hover:bg-iron-800 disabled:opacity-50"
-          >
-            {isInCart(game.id) ? 'In cart' : 'Add to cart'}
-          </motion.button>
         </aside>
       </div>
 

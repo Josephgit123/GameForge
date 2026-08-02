@@ -37,6 +37,11 @@
   --color-ember-text-on: #12161f;
   --color-teal: #2dd4bf;
   --color-violet: #e879f9;
+  /* Premium/GameForge+ accent — gold, paired with violet for
+     early-access/exclusive/member-only UI, distinct from the app's main
+     cyan brand accent. */
+  --color-gold: #d4af37;
+  --color-gold-text-on: #12161f;
   --color-success: #34d399;
   --color-warning: #fbbf24;
   --color-danger: #f87171;
@@ -66,6 +71,8 @@
   --color-ember: #155e75;
   --color-ember-text-on: #f4f6fb;
   --color-violet: #a21caf;
+  --color-gold: #a16207;
+  --color-gold-text-on: #f4f6fb;
 }
 
 @media (prefers-color-scheme: light) {
@@ -81,5 +88,7 @@
     --color-ember: #155e75;
     --color-ember-text-on: #f4f6fb;
     --color-violet: #a21caf;
+    --color-gold: #a16207;
+    --color-gold-text-on: #f4f6fb;
   }
 }

@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { useSubscription } from '../context/SubscriptionContext';
 import { ThemeToggle } from './ThemeToggle';
 import { SearchBar } from './SearchBar';
 import { CartDrawer } from './CartDrawer';
@@ -15,6 +16,7 @@ export function Navbar() {
   const { user, logout } = useAuth();
   const { gameIds } = useCart();
   const { gameIds: wishlistIds } = useWishlist();
+  const { isActiveMember } = useSubscription();
   const [cartOpen, setCartOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -46,6 +48,7 @@ export function Navbar() {
                 </NavLink>
                 <NavLink to="/subscribe" className={navLinkClass}>
                   GameForge+
+                  {isActiveMember && <span className="ml-1.5 rounded-full bg-gold px-1.5 py-0.5 text-[10px] font-bold text-gold-text-on">★</span>}
                 </NavLink>
               </>
             )}
@@ -93,10 +96,17 @@ export function Navbar() {
                   type="button"
                   whileTap={{ scale: 0.92 }}
                   onClick={() => setMenuOpen((v) => !v)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-iron-800 font-display text-sm font-semibold text-steam-100"
+                  className={`flex h-9 w-9 items-center justify-center rounded-full bg-iron-800 font-display text-sm font-semibold text-steam-100 ${
+                    isActiveMember ? 'ring-2 ring-gold ring-offset-2 ring-offset-forge-black' : ''
+                  }`}
                 >
                   {user.firstName[0]}
                 </motion.button>
+                {isActiveMember && (
+                  <span className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-gold text-[9px] font-bold text-gold-text-on">
+                    ★
+                  </span>
+                )}
                 <AnimatePresence>
                   {menuOpen && (
                     <motion.div
@@ -107,6 +117,11 @@ export function Navbar() {
                       className="absolute right-0 top-11 w-48 rounded-lg border border-iron-700 bg-iron-900 py-2 shadow-xl"
                       onMouseLeave={() => setMenuOpen(false)}
                     >
+                      {isActiveMember && (
+                        <div className="mx-2 mb-1 flex items-center gap-1.5 rounded-md bg-gold/15 px-2 py-1.5 text-xs font-semibold text-gold">
+                          <span>★</span> GameForge+ Member
+                        </div>
+                      )}
                       <Link to="/profile" className="block px-4 py-2 text-sm text-steam-100 hover:bg-iron-800" onClick={() => setMenuOpen(false)}>
                         Profile
                       </Link>

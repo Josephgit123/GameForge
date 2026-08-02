@@ -3,21 +3,31 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import { useSubscription } from '../context/SubscriptionContext';
 import { HeroCarousel } from '../components/HeroCarousel';
 import { GameCard } from '../components/GameCard';
 import { GameCardSkeleton, HeroSkeleton } from '../components/SkeletonLoader';
 import type { Game, LibraryEntry, TopSellerEntry } from '../lib/types';
+
+const ACCENT_CLASSES = {
+  gold: 'text-gold',
+  violet: 'text-violet',
+} as const;
 
 function Shelf({
   title,
   games,
   ownedIds,
   interactive,
+  accent,
+  subtitle,
 }: {
   title: string;
   games: Game[];
   ownedIds: Set<string>;
   interactive: boolean;
+  accent?: keyof typeof ACCENT_CLASSES;
+  subtitle?: string;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   if (games.length === 0) return null;
@@ -29,9 +39,13 @@ function Shelf({
   return (
     <section className="mx-auto max-w-7xl px-6 py-8">
       <div className="mb-4 flex items-center justify-between">
-        <Link to="/categories" className="group flex items-center gap-1.5 font-display text-xl font-semibold text-steam-100">
-          {title}
-          <svg
+        <div>
+          <Link
+            to="/categories"
+            className={`group flex items-center gap-1.5 font-display text-xl font-semibold ${accent ? ACCENT_CLASSES[accent] : 'text-steam-100'}`}
+          >
+            {title}
+            <svg
             width="18"
             height="18"
             viewBox="0 0 24 24"
@@ -41,8 +55,10 @@ function Shelf({
             className="translate-x-0 text-steam-400 transition-transform group-hover:translate-x-1 group-hover:text-steam-100"
           >
             <path d="m9 18 6-6-6-6" />
-          </svg>
-        </Link>
+            </svg>
+          </Link>
+          {subtitle && <p className="mt-0.5 text-xs text-steam-600">{subtitle}</p>}
+        </div>
         <div className="hidden gap-2 sm:flex">
           <button
             type="button"
@@ -86,10 +102,11 @@ function Shelf({
 
 export function Storefront() {
   const { user, token } = useAuth();
+  const { isActiveMember } = useSubscription();
   const isCustomer = user?.role === 'CUSTOMER';
   const [games, setGames] = useState<Game[] | null>(null);
   const [topSellers, setTopSellers] = useState<TopSellerEntry[] | null>(null);
-  const [ownedIds, setOwnedIds] = useState<Set<string>>(new Set());
+  const [libraryEntries, setLibraryEntries] = useState<LibraryEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -107,9 +124,11 @@ export function Storefront() {
     if (!isCustomer) return;
     api
       .get<{ entries: LibraryEntry[] }>('/library', token)
-      .then((res) => setOwnedIds(new Set(res.entries.map((e) => e.gameId))))
+      .then((res) => setLibraryEntries(res.entries))
       .catch(() => {});
   }, [isCustomer, token]);
+
+  const ownedIds = new Set(libraryEntries.map((e) => e.gameId));
 
   if (error) {
     return (
@@ -146,6 +165,51 @@ export function Storefront() {
   const allGamesPreview = games.slice(0, SHELF_SIZE);
   const featuredForHero = topSellers && topSellers.length > 0 ? topSellers.map((t) => t.game) : games.slice(0, 5);
 
+  // --- Premium Game Collections (item 2) — open to everyone as discovery/
+  // upsell, reusing existing game data via the flags set on Game, no
+  // duplicate products created. ---
+  const exclusiveGames = games.filter((g) => g.gameForgePlusExclusive).slice(0, SHELF_SIZE);
+  const memberDeals = games.filter((g) => g.featured).slice(0, SHELF_SIZE);
+  // "Premium Bundles" — a curated shelf (highest-priced exclusive titles),
+  // not a real combined-purchase bundle mechanic (that would need new
+  // pricing/order logic, out of scope here).
+  const premiumBundles = [...exclusiveGames].sort((a, b) => b.price - a.price).slice(0, 8);
+
+  // --- AI Recommendations (item 6) — deterministic logic over existing
+  // game/library metadata, no ML involved. ---
+  const ownedGames = libraryEntries.map((e) => e.game);
+  const genreCounts = new Map<string, number>();
+  for (const g of ownedGames) {
+    if (g.genre) genreCounts.set(g.genre, (genreCounts.get(g.genre) ?? 0) + 1);
+  }
+  const topGenre = [...genreCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const recommendedForYou = topGenre
+    ? games.filter((g) => g.genre === topGenre && !ownedIds.has(g.id)).slice(0, SHELF_SIZE)
+    : [];
+
+  const mostRecentEntry = [...libraryEntries].sort(
+    (a, b) => new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime()
+  )[0];
+  const becauseYouPlayed = mostRecentEntry
+    ? games
+        .filter(
+          (g) =>
+            !ownedIds.has(g.id) &&
+            (g.genre === mostRecentEntry.game.genre || g.publisherId === mostRecentEntry.game.publisherId)
+        )
+        .slice(0, SHELF_SIZE)
+    : [];
+
+  // Member-only AI sections — a genuine perk, unlike the open Premium
+  // Collections shelves above.
+  const trendingForMembers = (topSellers ?? [])
+    .map((t) => t.game)
+    .filter((g) => g.gameForgePlusExclusive || g.featured)
+    .slice(0, SHELF_SIZE);
+  const exclusiveMemberPicks = [...exclusiveGames]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, SHELF_SIZE);
+
   return (
     <div>
       <div className="mx-auto max-w-7xl px-6 pt-8">
@@ -168,9 +232,53 @@ export function Storefront() {
         />
       </div>
 
+      {isActiveMember && (
+        <>
+          <Shelf
+            title="Exclusive Member Picks"
+            subtitle="Unlocked because you're a GameForge+ member"
+            games={exclusiveMemberPicks}
+            ownedIds={ownedIds}
+            interactive={isCustomer}
+            accent="gold"
+          />
+          <Shelf
+            title="Trending for Members"
+            games={trendingForMembers}
+            ownedIds={ownedIds}
+            interactive={isCustomer}
+            accent="gold"
+          />
+        </>
+      )}
+
+      {recommendedForYou.length > 0 && (
+        <Shelf title="Recommended for You" games={recommendedForYou} ownedIds={ownedIds} interactive={isCustomer} />
+      )}
+      {becauseYouPlayed.length > 0 && mostRecentEntry && (
+        <Shelf
+          title={`Because You Played ${mostRecentEntry.game.title}`}
+          games={becauseYouPlayed}
+          ownedIds={ownedIds}
+          interactive={isCustomer}
+        />
+      )}
+
       {topSellers && topSellers.length > 0 && (
         <Shelf title="Top Sellers" games={topSellers.map((t) => t.game)} ownedIds={ownedIds} interactive={isCustomer} />
       )}
+
+      <Shelf
+        title="GameForge+ Exclusive"
+        subtitle="Available to everyone — GameForge+ members get 10% off"
+        games={exclusiveGames}
+        ownedIds={ownedIds}
+        interactive={isCustomer}
+        accent="violet"
+      />
+      <Shelf title="Members Only Deals" games={memberDeals} ownedIds={ownedIds} interactive={isCustomer} accent="violet" />
+      <Shelf title="Premium Bundles" games={premiumBundles} ownedIds={ownedIds} interactive={isCustomer} accent="violet" />
+
       <Shelf title="Recently Released" games={recentlyReleased} ownedIds={ownedIds} interactive={isCustomer} />
       {freeGames.length > 0 && (
         <Shelf title="Free Games" games={freeGames} ownedIds={ownedIds} interactive={isCustomer} />

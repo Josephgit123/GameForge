@@ -38,6 +38,19 @@ export function ManageGames() {
     }
   }
 
+  async function toggleFeatured(game: Game) {
+    setActingId(game.id);
+    setError(null);
+    try {
+      await api.patch(`/games/${game.id}`, { featured: !game.featured }, token);
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : `Could not update "${game.title}".`);
+    } finally {
+      setActingId(null);
+    }
+  }
+
   return (
     <div className="page">
       <h1 style={{ marginBottom: 'var(--sp-8)' }}>Manage games</h1>
@@ -57,6 +70,19 @@ export function ManageGames() {
               </div>
               <div className="row" style={{ gap: 'var(--sp-3)', alignItems: 'center' }}>
                 <span className={statusBadgeClass(game.status)}>{game.status}</span>
+                {game.featured && (
+                  <span className="badge" style={{ background: 'var(--gold)', color: 'var(--gold-text-on)' }}>
+                    FEATURED
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={actingId === game.id}
+                  onClick={() => toggleFeatured(game)}
+                >
+                  {game.featured ? 'Unfeature' : 'Feature'}
+                </button>
                 {game.status !== 'PUBLISHED' && (
                   <button
                     type="button"

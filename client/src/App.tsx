@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
+import { SubscriptionProvider } from './context/SubscriptionContext';
 import { Layout } from './components/Layout';
 import { RequireRole } from './components/RequireRole';
 import { Storefront } from './pages/Storefront';
@@ -39,6 +40,7 @@ import { ManageSubscriptions } from './pages/ManageSubscriptions';
 export default function App() {
   return (
     <AuthProvider>
+      <SubscriptionProvider>
       <CartProvider>
       <WishlistProvider>
       <Routes>
@@ -88,6 +90,7 @@ export default function App() {
       </Routes>
       </WishlistProvider>
       </CartProvider>
+      </SubscriptionProvider>
     </AuthProvider>
   );
 }

@@ -29,6 +29,10 @@ export interface Game {
   systemRequirements: string | null;
   createdAt: string;
   publisherName: string;
+  earlyAccess: boolean;
+  beta: boolean;
+  gameForgePlusExclusive: boolean;
+  featured: boolean;
 }
 
 export interface TopSellerEntry {

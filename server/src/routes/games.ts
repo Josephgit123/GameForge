@@ -101,8 +101,20 @@ gamesRouter.post(
       return res.status(403).json({ error: 'Your publisher account is not yet approved' });
     }
 
-    const { title, description, price, currency, coverImageUrl, genre, platform, screenshotUrls, systemRequirements } =
-      req.body ?? {};
+    const {
+      title,
+      description,
+      price,
+      currency,
+      coverImageUrl,
+      genre,
+      platform,
+      screenshotUrls,
+      systemRequirements,
+      earlyAccess,
+      beta,
+      gameForgePlusExclusive,
+    } = req.body ?? {};
     if (!title || !description || typeof price !== 'number' || !Number.isInteger(price) || !currency) {
       return res
         .status(400)
@@ -122,6 +134,9 @@ gamesRouter.post(
         screenshotUrls: Array.isArray(screenshotUrls) ? screenshotUrls : [],
         systemRequirements: systemRequirements || null,
         status: GameStatus.DRAFT,
+        earlyAccess: Boolean(earlyAccess),
+        beta: Boolean(beta),
+        gameForgePlusExclusive: Boolean(gameForgePlusExclusive),
       },
     });
     res.status(201).json({ game });
@@ -147,8 +162,22 @@ gamesRouter.patch(
       }
     }
 
-    const { title, description, price, currency, status, coverImageUrl, genre, platform, screenshotUrls, systemRequirements } =
-      req.body ?? {};
+    const {
+      title,
+      description,
+      price,
+      currency,
+      status,
+      coverImageUrl,
+      genre,
+      platform,
+      screenshotUrls,
+      systemRequirements,
+      earlyAccess,
+      beta,
+      gameForgePlusExclusive,
+      featured,
+    } = req.body ?? {};
 
     if (status !== undefined) {
       const allowedForRole =
@@ -156,6 +185,13 @@ gamesRouter.patch(
       if (!allowedForRole.includes(status)) {
         return res.status(403).json({ error: `You cannot set status to ${status}` });
       }
+    }
+
+    // "Featured" (admin's Featured Member Games control) is admin-only —
+    // a publisher can mark their own games early-access/beta/exclusive,
+    // but not feature themselves.
+    if (featured !== undefined && req.user!.role !== Role.ADMIN) {
+      return res.status(403).json({ error: 'Only an admin can set featured' });
     }
 
     const updated = await prisma.game.update({
@@ -171,6 +207,10 @@ gamesRouter.patch(
         ...(platform !== undefined && { platform: platform || null }),
         ...(screenshotUrls !== undefined && { screenshotUrls: Array.isArray(screenshotUrls) ? screenshotUrls : [] }),
         ...(systemRequirements !== undefined && { systemRequirements: systemRequirements || null }),
+        ...(earlyAccess !== undefined && { earlyAccess: Boolean(earlyAccess) }),
+        ...(beta !== undefined && { beta: Boolean(beta) }),
+        ...(gameForgePlusExclusive !== undefined && { gameForgePlusExclusive: Boolean(gameForgePlusExclusive) }),
+        ...(featured !== undefined && { featured: Boolean(featured) }),
       },
     });
     res.json({ game: updated });

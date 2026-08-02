@@ -22,6 +22,8 @@
   --ember-text-on: #12161f;
   --teal: #2dd4bf;
   --violet: #e879f9;
+  --gold: #d4af37;
+  --gold-text-on: #12161f;
   --success: #34d399;
   --warning: #fbbf24;
   --danger: #f87171;
@@ -58,6 +60,8 @@
     --ember: #155e75;
     --ember-text-on: #f4f6fb;
     --violet: #a21caf;
+    --gold: #a16207;
+    --gold-text-on: #f4f6fb;
   }
 }
 
@@ -76,6 +80,8 @@
   --ember: #22d3ee;
   --ember-text-on: #12161f;
   --violet: #e879f9;
+  --gold: #d4af37;
+  --gold-text-on: #12161f;
 }
 
 :root[data-theme='light'] {
@@ -91,4 +97,6 @@
   --ember: #155e75;
   --ember-text-on: #f4f6fb;
   --violet: #a21caf;
+  --gold: #a16207;
+  --gold-text-on: #f4f6fb;
 }

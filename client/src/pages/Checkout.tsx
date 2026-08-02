@@ -124,18 +124,23 @@ export function Checkout() {
       </div>
 
       <div className="mb-6 rounded-2xl border border-iron-700 bg-iron-900 p-5">
+        {subscriberDiscount > 0 && (
+          <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-gold">
+            <span>★</span> GameForge+ Member
+          </div>
+        )}
         <div className="flex items-center justify-between text-sm text-steam-400">
-          <span>Subtotal</span>
+          <span>Original Price</span>
           <span className="font-mono">{formatMoney(total, currency)}</span>
         </div>
         {subscriberDiscount > 0 && (
           <div className="mt-2 flex items-center justify-between text-sm text-teal">
-            <span>GameForge+ discount ({subscription!.discountPercent}%)</span>
+            <span>GameForge+ Discount ({subscription!.discountPercent}%)</span>
             <span className="font-mono">-{formatMoney(subscriberDiscount, currency)}</span>
           </div>
         )}
         <div className="mt-2 flex items-center justify-between border-t border-iron-700 pt-2 text-base font-semibold text-steam-100">
-          <span>Total</span>
+          <span>Final Price</span>
           <span className="font-mono">{formatMoney(finalTotal, currency)}</span>
         </div>
         <p className="mt-2 text-xs text-steam-600">Promo codes and gift cards apply at checkout, once validated.</p>
