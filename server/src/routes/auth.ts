@@ -259,6 +259,7 @@ authRouter.get('/me/publisher', requireAuth, requireRole(Role.PUBLISHER), asyncH
       surfboardMerchantId: publisher.surfboardMerchantId,
       surfboardApplicationId: publisher.surfboardApplicationId,
       webKybUrl: publisher.webKybUrl,
+      surfboardStoreId: store?.surfboardStoreId ?? null,
       storeName,
       merchantVerified,
       notifyOnNewOrder: publisher.notifyOnNewOrder,

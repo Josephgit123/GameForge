@@ -3,7 +3,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ThemeToggle } from './ThemeToggle';
 import { Navbar } from './Navbar';
 import { Footer } from './Footer';
+import { PatsStoreLogo } from './PatsStoreLogo';
 import { useAuth } from '../context/AuthContext';
+
+// Scoped to this one publisher account only — not a general "publisher
+// branding in nav" feature. See PatsStoreLogo.tsx.
+const PATS_STORE_EMAIL = 'publisher@gameforge.dev';
 
 function PageTransition() {
   const location = useLocation();
@@ -30,8 +35,9 @@ function PortalNav() {
   return (
     <header className="topnav">
       <div className="topnav-inner">
-        <Link to="/" className="brand">
+        <Link to="/" className="brand" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
           Game<span className="ember-dot">Forge</span>
+          {user?.role === 'PUBLISHER' && user.email === PATS_STORE_EMAIL && <PatsStoreLogo />}
         </Link>
         <nav className="nav-links">
           {user?.role !== 'PUBLISHER' && user?.role !== 'ADMIN' && (

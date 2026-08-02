@@ -130,6 +130,7 @@ export function PublisherStoreManagement() {
             <>
               <InfoRow label="Merchant status" value={merchant.merchantVerified ? 'Verified' : 'Onboarding'} />
               <InfoRow label="Merchant ID" value={merchant.surfboardMerchantId} />
+              <InfoRow label="Store ID" value={merchant.surfboardStoreId ?? '—'} />
               <InfoRow label="Store name" value={merchant.storeName ?? '—'} />
               {details ? (
                 <>

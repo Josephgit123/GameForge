@@ -127,6 +127,7 @@ export interface PublisherStatusInfo {
   surfboardMerchantId: string | null;
   surfboardApplicationId: string | null;
   webKybUrl: string | null;
+  surfboardStoreId: string | null;
   storeName: string | null;
   merchantVerified: boolean;
   notifyOnNewOrder: boolean;
