@@ -22,6 +22,84 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+const IMAGE_BRANDING_FIELDS = new Set(['logoUrl', 'iconUrl', 'primaryCoverImage']);
+
+function EnhanceImageControl({
+  productName,
+  url,
+  onPick,
+  token,
+}: {
+  productName: string;
+  url: string;
+  onPick: (url: string) => void;
+  token: string | null;
+}) {
+  const [mode, setMode] = useState<'STANDARD' | 'SCENE'>('STANDARD');
+  const [enhancing, setEnhancing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [candidates, setCandidates] = useState<string[] | null>(null);
+
+  async function enhance() {
+    setError(null);
+    setCandidates(null);
+    if (!url) {
+      setError('Add a URL first.');
+      return;
+    }
+    setEnhancing(true);
+    try {
+      const res = await api.post<{ imageUrls: string[] }>('/store/enhance-image', { productName, url, mode }, token);
+      setCandidates(res.imageUrls);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not enhance the image right now.');
+    } finally {
+      setEnhancing(false);
+    }
+  }
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center gap-2">
+        <select
+          value={mode}
+          onChange={(e) => setMode(e.target.value as 'STANDARD' | 'SCENE')}
+          className="rounded-md border border-iron-700 bg-iron-800 px-2 py-1.5 text-xs text-steam-100"
+        >
+          <option value="STANDARD">Standard enhance</option>
+          <option value="SCENE">Scene enhance</option>
+        </select>
+        <button
+          type="button"
+          disabled={enhancing}
+          onClick={enhance}
+          className="rounded-md border border-iron-700 px-3 py-1.5 text-xs font-medium text-steam-100 hover:bg-iron-800 disabled:opacity-50"
+        >
+          {enhancing ? 'Enhancing…' : 'Enhance with AI'}
+        </button>
+      </div>
+      {error && <p className="mt-2 text-xs text-danger">{error}</p>}
+      {candidates && candidates.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {candidates.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => {
+                onPick(c);
+                setCandidates(null);
+              }}
+              className="overflow-hidden rounded-md border border-iron-700 hover:border-ember"
+            >
+              <img src={c} alt="Enhanced candidate" className="h-16 w-12 object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const ACTIVATABLE_METHODS: { key: string; label: string }[] = [
   { key: 'swish', label: 'Swish' },
   { key: 'klarna', label: 'Klarna' },
@@ -226,6 +304,14 @@ export function PublisherStoreManagement() {
                   onChange={(e) => setBrandingForm((v) => ({ ...v, [key]: e.target.value }))}
                   className="w-full rounded-md border border-iron-700 bg-iron-800 px-3 py-2 text-sm text-steam-100 outline-none focus:border-ember disabled:opacity-50"
                 />
+                {isOwnMerchant && IMAGE_BRANDING_FIELDS.has(key) && (
+                  <EnhanceImageControl
+                    productName={merchant?.storeName ?? 'Store'}
+                    url={brandingForm[key] ?? ''}
+                    onPick={(url) => setBrandingForm((v) => ({ ...v, [key]: url }))}
+                    token={token}
+                  />
+                )}
               </div>
             ))}
             {isOwnMerchant && (

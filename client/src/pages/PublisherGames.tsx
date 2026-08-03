@@ -64,6 +64,34 @@ function GameFormFields({
   values: GameFormValues;
   onChange: (field: keyof GameFormValues, value: string | boolean) => void;
 }) {
+  const { token } = useAuth();
+  const [enhanceMode, setEnhanceMode] = useState<'STANDARD' | 'SCENE'>('STANDARD');
+  const [enhancing, setEnhancing] = useState(false);
+  const [enhanceError, setEnhanceError] = useState<string | null>(null);
+  const [candidates, setCandidates] = useState<string[] | null>(null);
+
+  async function enhance() {
+    setEnhanceError(null);
+    setCandidates(null);
+    if (!values.title || !values.coverImageUrl) {
+      setEnhanceError('Add a title and a cover image URL first.');
+      return;
+    }
+    setEnhancing(true);
+    try {
+      const res = await api.post<{ imageUrls: string[] }>(
+        '/games/enhance-image',
+        { productName: values.title, url: values.coverImageUrl, mode: enhanceMode },
+        token
+      );
+      setCandidates(res.imageUrls);
+    } catch (err) {
+      setEnhanceError(err instanceof ApiError ? err.message : 'Could not enhance the image right now.');
+    } finally {
+      setEnhancing(false);
+    }
+  }
+
   const inputClass =
     'w-full rounded-md border border-iron-700 bg-iron-800 px-3 py-2 text-sm text-steam-100 outline-none placeholder:text-steam-600 focus:border-ember';
   return (
@@ -115,6 +143,42 @@ function GameFormFields({
           onChange={(e) => onChange('coverImageUrl', e.target.value)}
           className={inputClass}
         />
+        <div className="mt-2 flex items-center gap-2">
+          <select
+            value={enhanceMode}
+            onChange={(e) => setEnhanceMode(e.target.value as 'STANDARD' | 'SCENE')}
+            className="rounded-md border border-iron-700 bg-iron-800 px-2 py-1.5 text-xs text-steam-100"
+          >
+            <option value="STANDARD">Standard enhance</option>
+            <option value="SCENE">Scene enhance</option>
+          </select>
+          <button
+            type="button"
+            disabled={enhancing}
+            onClick={enhance}
+            className="rounded-md border border-iron-700 px-3 py-1.5 text-xs font-medium text-steam-100 hover:bg-iron-800 disabled:opacity-50"
+          >
+            {enhancing ? 'Enhancing…' : 'Enhance with AI'}
+          </button>
+        </div>
+        {enhanceError && <p className="mt-2 text-xs text-danger">{enhanceError}</p>}
+        {candidates && candidates.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {candidates.map((url) => (
+              <button
+                key={url}
+                type="button"
+                onClick={() => {
+                  onChange('coverImageUrl', url);
+                  setCandidates(null);
+                }}
+                className="overflow-hidden rounded-md border border-iron-700 hover:border-ember"
+              >
+                <img src={url} alt="Enhanced candidate" className="h-16 w-12 object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <div className="flex gap-4">
         <div className="flex-1">

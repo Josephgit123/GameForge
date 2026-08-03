@@ -21,6 +21,7 @@ function Shelf({
   interactive,
   accent,
   subtitle,
+  logoUrl,
 }: {
   title: string;
   games: Game[];
@@ -28,6 +29,7 @@ function Shelf({
   interactive: boolean;
   accent?: keyof typeof ACCENT_CLASSES;
   subtitle?: string;
+  logoUrl?: string;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   if (games.length === 0) return null;
@@ -44,6 +46,7 @@ function Shelf({
             to="/categories"
             className={`group flex items-center gap-1.5 font-display text-xl font-semibold ${accent ? ACCENT_CLASSES[accent] : 'text-steam-100'}`}
           >
+            {logoUrl && <img src={logoUrl} alt="" className="h-6 w-6 rounded object-cover" />}
             {title}
             <svg
             width="18"
@@ -100,6 +103,10 @@ function Shelf({
   );
 }
 
+// Pat Publisher's Publisher.id (not User.id) — scoped spotlight, same
+// hardcoded-identifier pattern as PATS_STORE_EMAIL in Layout.tsx.
+const PAT_PUBLISHER_ID = 'f1a1c8db-4011-484d-a5c1-10b33260b205';
+
 export function Storefront() {
   const { user, token } = useAuth();
   const { isActiveMember } = useSubscription();
@@ -108,6 +115,14 @@ export function Storefront() {
   const [topSellers, setTopSellers] = useState<TopSellerEntry[] | null>(null);
   const [libraryEntries, setLibraryEntries] = useState<LibraryEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [patLogoUrl, setPatLogoUrl] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    api
+      .get<{ branding: { logoUrl?: string } }>(`/store/branding/${PAT_PUBLISHER_ID}`)
+      .then((res) => setPatLogoUrl(res.branding.logoUrl))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     api
@@ -158,6 +173,7 @@ export function Storefront() {
   }
 
   const SHELF_SIZE = 20;
+  const patsGames = games.filter((g) => g.publisherId === PAT_PUBLISHER_ID).slice(0, SHELF_SIZE);
   const recentlyReleased = [...games]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, SHELF_SIZE);
@@ -267,6 +283,14 @@ export function Storefront() {
       {topSellers && topSellers.length > 0 && (
         <Shelf title="Top Sellers" games={topSellers.map((t) => t.game)} ownedIds={ownedIds} interactive={isCustomer} />
       )}
+
+      <Shelf
+        title="Pat's Game Store"
+        games={patsGames}
+        ownedIds={ownedIds}
+        interactive={isCustomer}
+        logoUrl={patLogoUrl}
+      />
 
       <Shelf
         title="GameForge+ Exclusive"

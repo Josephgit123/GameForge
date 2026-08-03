@@ -3,8 +3,11 @@ import { GameStatus, Role } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { asyncHandler } from '../lib/asyncHandler';
+import { enhanceImage, SurfboardApiError } from '../services/surfboard';
 
 export const gamesRouter = Router();
+
+const FALLBACK_MERCHANT_ID = process.env.SURFBOARD_DEMO_FALLBACK_MERCHANT_ID as string;
 
 // Additive, read-only convenience for the storefront — flattens the
 // publisher's display name onto the game object instead of making every
@@ -140,6 +143,40 @@ gamesRouter.post(
       },
     });
     res.status(201).json({ game });
+  })
+);
+
+// Publisher: AI-enhance a product image via Surfboard's AI API. Not gameId-scoped
+// (works from the create form too, before a game exists yet) and not gated
+// behind ownership of a distinct merchant like branding/payment-methods writes —
+// this doesn't mutate any shared merchant config, it's a stateless per-request
+// call, so a publisher on the shared demo merchant can use it too (subject to
+// whatever rate limit Surfboard applies to that merchant).
+gamesRouter.post(
+  '/enhance-image',
+  requireAuth,
+  requireRole(Role.PUBLISHER),
+  asyncHandler(async (req, res) => {
+    const publisher = await prisma.publisher.findUnique({ where: { userId: req.user!.id } });
+    if (!publisher) {
+      return res.status(403).json({ error: 'You have not registered as a publisher yet' });
+    }
+
+    const { productName, url, mode } = req.body ?? {};
+    if (!productName || !url || (mode !== 'STANDARD' && mode !== 'SCENE')) {
+      return res.status(400).json({ error: 'productName, url, and mode (STANDARD or SCENE) are required' });
+    }
+
+    const merchantId = publisher.surfboardMerchantId ?? FALLBACK_MERCHANT_ID;
+    try {
+      const result = await enhanceImage(merchantId, { productName, url, mode });
+      res.json({ imageUrls: result.data.imageUrls });
+    } catch (err) {
+      if (err instanceof SurfboardApiError) {
+        return res.status(502).json({ error: 'Could not enhance the image right now', detail: err.body });
+      }
+      throw err;
+    }
   })
 );
 

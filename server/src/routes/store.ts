@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import { asyncHandler } from '../lib/asyncHandler';
 import {
   activatePaymentMethods,
+  enhanceImage,
   getBranding,
   getMerchantDetails,
   getPaymentMethods,
@@ -31,6 +32,30 @@ async function requirePublisher(userId: string) {
 function ownsDistinctMerchant(surfboardMerchantId: string | null): surfboardMerchantId is string {
   return Boolean(surfboardMerchantId) && surfboardMerchantId !== FALLBACK_MERCHANT_ID;
 }
+
+// Public: a publisher's branding, for customer-facing display (e.g. a store
+// spotlight on the storefront). No auth — branding (logo/colors) is exactly
+// what Surfboard's Branding API is meant to feed customer-facing pages, per
+// its own doc description, so this exposes nothing sensitive.
+storeRouter.get(
+  '/branding/:publisherId',
+  asyncHandler(async (req, res) => {
+    const publisher = await prisma.publisher.findUnique({ where: { id: req.params.publisherId } });
+    if (!publisher) {
+      return res.status(404).json({ error: 'Publisher not found' });
+    }
+    const merchantId = publisher.surfboardMerchantId ?? FALLBACK_MERCHANT_ID;
+    try {
+      const branding = await getBranding(merchantId);
+      res.json({ branding: branding.data });
+    } catch (err) {
+      if (err instanceof SurfboardApiError) {
+        return res.status(502).json({ error: 'Could not fetch branding right now' });
+      }
+      throw err;
+    }
+  })
+);
 
 // Reads use the publisher's own merchant if they have one, otherwise the
 // shared demo fallback — informational either way, no mutation risk.
@@ -129,6 +154,39 @@ storeRouter.get(
     } catch (err) {
       if (err instanceof SurfboardApiError) {
         return res.status(502).json({ error: 'Could not fetch branding right now' });
+      }
+      throw err;
+    }
+  })
+);
+
+// Publisher: AI-enhance a branding image (logo/icon/banner) via Surfboard's
+// AI API. Same call as games.ts's /games/enhance-image (the API itself has
+// no concept of "game" vs "branding" — it just enhances whatever image URL
+// it's given), duplicated here rather than shared since each route only
+// resolves its own merchantId and there's nothing else in common.
+storeRouter.post(
+  '/enhance-image',
+  requireAuth,
+  requireRole(Role.PUBLISHER),
+  asyncHandler(async (req, res) => {
+    const publisher = await requirePublisher(req.user!.id);
+    if (!publisher) {
+      return res.status(403).json({ error: 'You have not registered as a publisher yet' });
+    }
+
+    const { productName, url, mode } = req.body ?? {};
+    if (!productName || !url || (mode !== 'STANDARD' && mode !== 'SCENE')) {
+      return res.status(400).json({ error: 'productName, url, and mode (STANDARD or SCENE) are required' });
+    }
+
+    const merchantId = publisher.surfboardMerchantId ?? FALLBACK_MERCHANT_ID;
+    try {
+      const result = await enhanceImage(merchantId, { productName, url, mode });
+      res.json({ imageUrls: result.data.imageUrls });
+    } catch (err) {
+      if (err instanceof SurfboardApiError) {
+        return res.status(502).json({ error: 'Could not enhance the image right now', detail: err.body });
       }
       throw err;
     }

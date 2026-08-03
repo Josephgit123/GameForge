@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ThemeToggle } from './ThemeToggle';
@@ -5,6 +6,7 @@ import { Navbar } from './Navbar';
 import { Footer } from './Footer';
 import { PatsStoreLogo } from './PatsStoreLogo';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
 
 // Scoped to this one publisher account only — not a general "publisher
 // branding in nav" feature. See PatsStoreLogo.tsx.
@@ -30,14 +32,29 @@ function PageTransition() {
 // Publisher/Admin keep the original design system's nav — out of scope for
 // the Epic-style redesign, which only covers the customer-facing portal.
 function PortalNav() {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
+  const isPatsStore = user?.role === 'PUBLISHER' && user.email === PATS_STORE_EMAIL;
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isPatsStore) return;
+    api
+      .get<{ branding: { logoUrl?: string } }>('/store/branding', token)
+      .then((res) => setLogoUrl(res.branding.logoUrl ?? null))
+      .catch(() => {});
+  }, [isPatsStore, token]);
 
   return (
     <header className="topnav">
       <div className="topnav-inner">
         <Link to="/" className="brand" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
           Game<span className="ember-dot">Forge</span>
-          {user?.role === 'PUBLISHER' && user.email === PATS_STORE_EMAIL && <PatsStoreLogo />}
+          {isPatsStore &&
+            (logoUrl ? (
+              <img src={logoUrl} alt="Pat's game store" className="h-6 w-6 rounded-full object-cover" />
+            ) : (
+              <PatsStoreLogo />
+            ))}
         </Link>
         <nav className="nav-links">
           {user?.role !== 'PUBLISHER' && user?.role !== 'ADMIN' && (

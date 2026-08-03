@@ -568,3 +568,25 @@ export interface UpdateBrandingResponse {
 export function updateBranding(merchantId: string, input: MerchantBranding) {
   return request<UpdateBrandingResponse>('PATCH', `/merchants/${merchantId}/branding`, input, merchantId);
 }
+
+// --- AI API ---
+// POST /ai/enhance-image — from Surfboard's own doc (api-md/ai-enhance-image.md).
+// Unlike everything else in this file, this one is NOT yet confirmed live —
+// it's a fresh wrapper built from the doc alone, not verified against a real
+// Surfboard response.
+
+export interface EnhanceImageInput {
+  productName: string;
+  url: string;
+  mode: 'STANDARD' | 'SCENE';
+}
+
+export interface EnhanceImageResponse {
+  status: string;
+  data: { imageUrls: string[] };
+  message: string;
+}
+
+export function enhanceImage(merchantId: string, input: EnhanceImageInput) {
+  return request<EnhanceImageResponse>('POST', '/ai/enhance-image', input, merchantId);
+}
