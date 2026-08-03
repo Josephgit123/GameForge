@@ -590,3 +590,46 @@ export interface EnhanceImageResponse {
 export function enhanceImage(merchantId: string, input: EnhanceImageInput) {
   return request<EnhanceImageResponse>('POST', '/ai/enhance-image', input, merchantId);
 }
+
+// --- Global Search ---
+// GET /partners/:partnerId/global-search — confirmed request shape (method,
+// path, query params, headers) directly from the user. NOT yet confirmed
+// live, and the exact `data` response shape wasn't available (the doc only
+// says "the search results", grouped by record type per the feature
+// description) — typed loosely until verified against a real response.
+// Partner-scoped, not merchant-scoped: no MERCHANT-ID header, confirmed by
+// the reference request only sending API-KEY/API-SECRET.
+
+export interface GlobalSearchParams {
+  query: string;
+  pageNumber?: number;
+  merchantId?: string;
+  merchantType?: string;
+  storeId?: string;
+  storeStatus?: string;
+  terminalStatus?: string;
+  applicationStatus?: string;
+  applicationType?: string;
+  type?: string;
+}
+
+export interface GlobalSearchResponse {
+  status: string;
+  data: unknown;
+  message: string;
+}
+
+export function globalSearch(params: GlobalSearchParams) {
+  const qs = new URLSearchParams();
+  qs.set('query', params.query);
+  if (params.pageNumber !== undefined) qs.set('pageNumber', String(params.pageNumber));
+  if (params.merchantId) qs.set('merchantId', params.merchantId);
+  if (params.merchantType) qs.set('merchantType', params.merchantType);
+  if (params.storeId) qs.set('storeId', params.storeId);
+  if (params.storeStatus) qs.set('storeStatus', params.storeStatus);
+  if (params.terminalStatus) qs.set('terminalStatus', params.terminalStatus);
+  if (params.applicationStatus) qs.set('applicationStatus', params.applicationStatus);
+  if (params.applicationType) qs.set('applicationType', params.applicationType);
+  if (params.type) qs.set('type', params.type);
+  return request<GlobalSearchResponse>('GET', `/partners/${PARTNER_ID}/global-search?${qs.toString()}`);
+}

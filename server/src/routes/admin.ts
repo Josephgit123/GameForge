@@ -3,7 +3,7 @@ import { PublisherStatus, Role, SubscriptionStatus, SubscriptionChargeStatus } f
 import { prisma } from '../lib/prisma';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { asyncHandler } from '../lib/asyncHandler';
-import { createOrder, getOrderStatus, initiatePayment, SurfboardApiError } from '../services/surfboard';
+import { createOrder, getOrderStatus, globalSearch, initiatePayment, SurfboardApiError } from '../services/surfboard';
 import { CURRENCY_NUMERIC_CODES } from './subscriptions';
 
 const MERCHANT_ID = process.env.SURFBOARD_DEMO_FALLBACK_MERCHANT_ID as string;
@@ -112,6 +112,53 @@ adminRouter.get(
       },
     });
     res.json({ orders });
+  })
+);
+
+// --- Global Search ---
+// Partner-wide, across every merchant on the account — admin-only, never
+// exposed to a publisher (see surfboard.ts#globalSearch for why: no
+// MERCHANT-ID scoping on this endpoint at all).
+const SEARCH_STRING_PARAMS = [
+  'merchantId',
+  'merchantType',
+  'storeId',
+  'storeStatus',
+  'terminalStatus',
+  'applicationStatus',
+  'applicationType',
+  'type',
+] as const;
+
+adminRouter.get(
+  '/search',
+  requireAuth,
+  requireRole(Role.ADMIN),
+  asyncHandler(async (req, res) => {
+    const { query, pageNumber } = req.query;
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({ error: 'query is required' });
+    }
+
+    const filters: Record<string, string> = {};
+    for (const key of SEARCH_STRING_PARAMS) {
+      const value = req.query[key];
+      if (typeof value === 'string') filters[key] = value;
+    }
+
+    try {
+      const result = await globalSearch({
+        query,
+        pageNumber: typeof pageNumber === 'string' ? Number(pageNumber) : undefined,
+        ...filters,
+      });
+      res.json({ data: result.data });
+    } catch (err) {
+      if (err instanceof SurfboardApiError) {
+        return res.status(502).json({ error: 'Could not search right now', detail: err.body });
+      }
+      throw err;
+    }
   })
 );
 

@@ -56,7 +56,7 @@ function PortalNav() {
               <PatsStoreLogo />
             ))}
         </Link>
-        <nav className="nav-links">
+        <nav className={`nav-links${user?.role === 'ADMIN' ? ' nav-links--compact' : ''}`}>
           {user?.role !== 'PUBLISHER' && user?.role !== 'ADMIN' && (
             <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
               Storefront
@@ -157,16 +157,21 @@ function PortalNav() {
               >
                 Manage Subscriptions
               </NavLink>
+              <NavLink
+                to="/admin/search"
+                className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                style={{ ['--portal-color' as string]: 'var(--violet)' }}
+              >
+                Global Search
+              </NavLink>
+              <NavLink
+                to="/admin/refunds"
+                className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                style={{ ['--portal-color' as string]: 'var(--violet)' }}
+              >
+                Refunds
+              </NavLink>
             </>
-          )}
-          {user?.role === 'ADMIN' && (
-            <NavLink
-              to="/admin/refunds"
-              className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-              style={{ ['--portal-color' as string]: 'var(--violet)' }}
-            >
-              Refunds
-            </NavLink>
           )}
         </nav>
         <div className="row" style={{ gap: 'var(--sp-3)' }}>

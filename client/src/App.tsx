@@ -36,6 +36,7 @@ import { CreatePromotions } from './pages/CreatePromotions';
 import { IssueGiftCards } from './pages/IssueGiftCards';
 import { MonitorTransactions } from './pages/MonitorTransactions';
 import { ManageSubscriptions } from './pages/ManageSubscriptions';
+import { GlobalSearch } from './pages/GlobalSearch';
 
 export default function App() {
   return (
@@ -85,6 +86,7 @@ export default function App() {
             <Route path="/admin/gift-cards" element={<IssueGiftCards />} />
             <Route path="/admin/transactions" element={<MonitorTransactions />} />
             <Route path="/admin/subscriptions" element={<ManageSubscriptions />} />
+            <Route path="/admin/search" element={<GlobalSearch />} />
           </Route>
         </Route>
       </Routes>
