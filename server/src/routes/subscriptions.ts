@@ -25,26 +25,46 @@ subscriptionsRouter.post(
   requireAuth,
   asyncHandler(async (req, res) => {
     const existing = await prisma.subscription.findUnique({ where: { customerId: req.user!.id } });
-    if (existing && existing.status !== SubscriptionStatus.PENDING_ACTIVATION) {
+    if (
+      existing &&
+      existing.status !== SubscriptionStatus.PENDING_ACTIVATION &&
+      existing.status !== SubscriptionStatus.CANCELLED
+    ) {
       return res.status(400).json({ error: `You already have a subscription (${existing.status})` });
-    }
-    if (existing) {
-      // Stale abandoned signup attempt (never completed payment) — safe to
-      // retry from scratch rather than leave the customer stuck forever.
-      await prisma.subscription.delete({ where: { id: existing.id } });
     }
 
     const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
     const numericCurrency = CURRENCY_NUMERIC_CODES[SUBSCRIPTION_CURRENCY];
 
-    const subscription = await prisma.subscription.create({
-      data: {
-        customerId: req.user!.id,
-        amount: SUBSCRIPTION_AMOUNT,
-        currency: SUBSCRIPTION_CURRENCY,
-        discountPercent: SUBSCRIPTION_DISCOUNT_PERCENT,
-      },
-    });
+    // Reset in place rather than delete+recreate — customerId is unique
+    // (one row per customer ever, per the schema comment), and a CANCELLED
+    // subscription may already have real SubscriptionCharge history that a
+    // delete would orphan/violate the FK on. Covers both a stale
+    // PENDING_ACTIVATION retry and a genuine CANCELLED resubscribe.
+    const subscription = existing
+      ? await prisma.subscription.update({
+          where: { id: existing.id },
+          data: {
+            status: SubscriptionStatus.PENDING_ACTIVATION,
+            amount: SUBSCRIPTION_AMOUNT,
+            currency: SUBSCRIPTION_CURRENCY,
+            discountPercent: SUBSCRIPTION_DISCOUNT_PERCENT,
+            surfboardTokenId: null,
+            cardBrand: null,
+            truncatedPan: null,
+            pendingOrderId: null,
+            currentPeriodEnd: null,
+            cancelledAt: null,
+          },
+        })
+      : await prisma.subscription.create({
+          data: {
+            customerId: req.user!.id,
+            amount: SUBSCRIPTION_AMOUNT,
+            currency: SUBSCRIPTION_CURRENCY,
+            discountPercent: SUBSCRIPTION_DISCOUNT_PERCENT,
+          },
+        });
 
     try {
       // Signup charge goes through the normal PaymentPage terminal, same as
@@ -82,7 +102,15 @@ subscriptionsRouter.post(
 
       res.status(201).json({ paymentPageLink: surfboardOrder.data.paymentPageLink });
     } catch (err) {
-      await prisma.subscription.delete({ where: { id: subscription.id } });
+      // Delete only if this row is brand new (never had a chance to accrue
+      // charge history yet). If it already existed (a PENDING_ACTIVATION
+      // retry or a CANCELLED resubscribe), restore its prior status instead
+      // of deleting — same FK/history reasoning as above.
+      if (existing) {
+        await prisma.subscription.update({ where: { id: subscription.id }, data: { status: existing.status } });
+      } else {
+        await prisma.subscription.delete({ where: { id: subscription.id } });
+      }
       if (err instanceof SurfboardApiError) {
         console.error('Subscription signup failed:', err.status, JSON.stringify(err.body));
         return res.status(502).json({ error: 'Could not start the subscription with the payment provider' });

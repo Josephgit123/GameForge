@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useSubscription } from '../context/SubscriptionContext';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { api, ApiError } from '../lib/api';
 import { formatMoney } from '../lib/money';
@@ -8,6 +9,7 @@ import type { Subscription } from '../lib/types';
 
 export function Profile() {
   const { user, token, logout } = useAuth();
+  const { refresh: refreshSubscription } = useSubscription();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loadingSub, setLoadingSub] = useState(true);
   const [cancelling, setCancelling] = useState(false);
@@ -30,6 +32,7 @@ export function Profile() {
     try {
       const res = await api.post<{ subscription: Subscription }>('/subscriptions/cancel', {}, token);
       setSubscription(res.subscription);
+      refreshSubscription();
     } catch (err) {
       setSubError(err instanceof ApiError ? err.message : 'Could not cancel your subscription.');
     } finally {
