@@ -90,36 +90,69 @@ export function GameDetail() {
     return <div className="mx-auto max-w-5xl px-6 py-16 text-steam-400">Loading…</div>;
   }
 
+  const hasTrailer = Boolean(game.coverVideoUrl);
   const realCover = hasRealCoverImage(game.coverImageUrl) ? [game.coverImageUrl] : [];
   const realScreenshots = game.screenshotUrls.filter(hasRealCoverImage);
-  const gallery = [...realCover, ...realScreenshots];
+  const imageGallery = [...realCover, ...realScreenshots];
+  // Trailer, when present, is slide 0; image gallery indices shift by one.
+  const totalSlides = (hasTrailer ? 1 : 0) + imageGallery.length;
+  const showingTrailer = hasTrailer && galleryIndex === 0;
+  const currentImage = imageGallery[hasTrailer ? galleryIndex - 1 : galleryIndex];
   const isLocked = game.earlyAccess && !isActiveMember;
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
       <div className="relative mb-4 aspect-video overflow-hidden rounded-2xl bg-iron-800">
-        {gallery.length > 0 ? (
-          <img src={gallery[galleryIndex]} alt="" className="h-full w-full object-cover" />
+        {showingTrailer ? (
+          <video
+            key={game.coverVideoUrl}
+            src={game.coverVideoUrl!}
+            className="h-full w-full object-cover"
+            controls
+            playsInline
+            poster={imageGallery[0] || undefined}
+          />
+        ) : currentImage ? (
+          <img src={currentImage} alt="" className="h-full w-full object-cover" />
         ) : (
           <GamePoster title={game.title} genre={game.genre} seed={game.id} showText={false} />
         )}
         <WishlistButton gameId={game.id} className="absolute right-4 top-4" />
       </div>
 
-      {gallery.length > 1 && (
+      {totalSlides > 1 && (
         <div className="mb-8 flex gap-2 overflow-x-auto">
-          {gallery.map((url, i) => (
+          {hasTrailer && (
             <button
-              key={url + i}
               type="button"
-              onClick={() => setGalleryIndex(i)}
-              className={`h-16 w-28 shrink-0 overflow-hidden rounded-md border-2 ${
-                i === galleryIndex ? 'border-ember' : 'border-transparent opacity-70 hover:opacity-100'
+              onClick={() => setGalleryIndex(0)}
+              className={`relative h-16 w-28 shrink-0 overflow-hidden rounded-md border-2 bg-iron-900 ${
+                galleryIndex === 0 ? 'border-ember' : 'border-transparent opacity-70 hover:opacity-100'
               }`}
             >
-              <img src={url} alt="" className="h-full w-full object-cover" />
+              {imageGallery[0] && <img src={imageGallery[0]} alt="" className="h-full w-full object-cover" />}
+              <span className="absolute inset-0 flex items-center justify-center bg-black/40">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </span>
             </button>
-          ))}
+          )}
+          {imageGallery.map((url, i) => {
+            const slideIndex = hasTrailer ? i + 1 : i;
+            return (
+              <button
+                key={url + i}
+                type="button"
+                onClick={() => setGalleryIndex(slideIndex)}
+                className={`h-16 w-28 shrink-0 overflow-hidden rounded-md border-2 ${
+                  slideIndex === galleryIndex ? 'border-ember' : 'border-transparent opacity-70 hover:opacity-100'
+                }`}
+              >
+                <img src={url} alt="" className="h-full w-full object-cover" />
+              </button>
+            );
+          })}
         </div>
       )}
 

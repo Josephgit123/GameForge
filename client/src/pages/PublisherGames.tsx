@@ -16,6 +16,7 @@ interface GameFormValues {
   price: string;
   currency: string;
   coverImageUrl: string;
+  coverVideoUrl: string;
   genre: string;
   platform: string;
   screenshotUrlsInput: string;
@@ -31,6 +32,7 @@ const EMPTY_FORM: GameFormValues = {
   price: '',
   currency: 'USD',
   coverImageUrl: '',
+  coverVideoUrl: '',
   genre: '',
   platform: '',
   screenshotUrlsInput: '',
@@ -47,6 +49,7 @@ function gameToForm(game: Game): GameFormValues {
     price: (game.price / 100).toString(),
     currency: game.currency,
     coverImageUrl: game.coverImageUrl ?? '',
+    coverVideoUrl: game.coverVideoUrl ?? '',
     genre: game.genre ?? '',
     platform: game.platform ?? '',
     screenshotUrlsInput: game.screenshotUrls.join(', '),
@@ -180,6 +183,19 @@ function GameFormFields({
           </div>
         )}
       </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium text-steam-400">Trailer video URL</label>
+        <input
+          type="url"
+          placeholder="https://…mp4"
+          value={values.coverVideoUrl}
+          onChange={(e) => onChange('coverVideoUrl', e.target.value)}
+          className={inputClass}
+        />
+        <span className="mt-1 block text-xs text-steam-600">
+          Optional. When set, this plays instead of the cover image on the game's detail page.
+        </span>
+      </div>
       <div className="flex gap-4">
         <div className="flex-1">
           <label className="mb-1 block text-xs font-medium text-steam-400">Genre</label>
@@ -256,6 +272,7 @@ function formToPayload(values: GameFormValues) {
     price: Math.round(Number(values.price) * 100),
     currency: values.currency,
     coverImageUrl: values.coverImageUrl || undefined,
+    coverVideoUrl: values.coverVideoUrl || undefined,
     genre: values.genre || undefined,
     platform: values.platform || undefined,
     screenshotUrls: values.screenshotUrlsInput
