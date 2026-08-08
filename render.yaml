@@ -1,0 +1,63 @@
+services:
+  - type: web
+    name: gameforge-server
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm install && npx prisma generate && npx prisma migrate deploy && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gameforge-db
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 1d
+      # Set this to the real Vercel URL once the frontend is deployed
+      # (e.g. https://gameforge.vercel.app) — no trailing slash.
+      - key: CORS_ORIGIN
+        sync: false
+      - key: SURFBOARD_API_BASE_URL
+        value: https://carbon.surfgw.com/api
+      - key: SURFBOARD_API_KEY
+        sync: false
+      - key: SURFBOARD_API_SECRET
+        sync: false
+      - key: SURFBOARD_PARTNER_ID
+        sync: false
+      - key: SURFBOARD_WEBHOOK_SECRET
+        sync: false
+      # Set to this same service's real Render URL + /webhooks/surfboard
+      # once known (e.g. https://gameforge-server.onrender.com/webhooks/surfboard).
+      - key: SURFBOARD_WEBHOOK_URL
+        sync: false
+      - key: SURFBOARD_DEMO_FALLBACK_MERCHANT_ID
+        sync: false
+      - key: SURFBOARD_DEMO_FALLBACK_STORE_ID
+        sync: false
+      - key: SURFBOARD_DEMO_TERMINAL_ID
+        sync: false
+      - key: SURFBOARD_SUBSCRIPTION_TERMINAL_ID
+        sync: false
+      # Optional — only needed for "Continue with Google". Leave unset and
+      # POST /auth/google responds 503 instead of the server failing to boot.
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      # Optional — only needed for the admin "Discover" reference catalog.
+      - key: RAWG_API_KEY
+        sync: false
+
+databases:
+  - name: gameforge-db
+    plan: free
+    databaseName: gameforge
+    user: gameforge
