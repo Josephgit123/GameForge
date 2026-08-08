@@ -11,6 +11,7 @@ export interface User {
   role: Role;
   firstName: string;
   lastName: string;
+  surfboardCustomerId: string | null;
 }
 
 export interface Game {

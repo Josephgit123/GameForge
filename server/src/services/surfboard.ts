@@ -633,3 +633,51 @@ export function globalSearch(params: GlobalSearchParams) {
   if (params.type) qs.set('type', params.type);
   return request<GlobalSearchResponse>('GET', `/partners/${PARTNER_ID}/global-search?${qs.toString()}`);
 }
+
+// --- Customers API ---
+// POST /customers, GET /customers/:customerId — request/response shape from
+// web-guides/settlements-reporting.md's "Customer Details" section. Bare
+// `/customers` path with no partnerId/merchantId in the URL, and the guide's
+// example shows no MERCHANT-ID header either — but confirmed live it
+// actually requires one anyway (a real 401 without it: "Unauthorized access.
+// Please provide valid credentials to access this endpoint."). Same class of
+// doc-vs-reality gap as the Orders API's path and the Gift Card amount units.
+
+export interface CreateCustomerInput {
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  birthDate?: string; // YYYY/MM/DD
+  countryCode?: string;
+  gender?: string;
+  address?: {
+    addressLine1: string;
+    city: string;
+    countryCode: string;
+    postalCode: string;
+    role?: string;
+  }[];
+  emails?: { email: string; role: string }[];
+  phoneNumbers?: { phoneNumber: { code: string; number: string }; role: string }[];
+  cardIds?: string[];
+}
+
+export interface CreateCustomerResponse {
+  status: string;
+  data: { customerId: string };
+  message: string;
+}
+
+export function createCustomer(merchantId: string, input: CreateCustomerInput) {
+  return request<CreateCustomerResponse>('POST', '/customers', input, merchantId);
+}
+
+export interface GetCustomerResponse {
+  status: string;
+  data: CreateCustomerInput & { customerId: string };
+  message: string;
+}
+
+export function getCustomer(merchantId: string, customerId: string) {
+  return request<GetCustomerResponse>('GET', `/customers/${customerId}`, undefined, merchantId);
+}

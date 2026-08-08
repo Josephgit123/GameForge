@@ -7,13 +7,19 @@ import { signToken } from '../lib/jwt';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { asyncHandler } from '../lib/asyncHandler';
 import { FirebaseNotConfiguredError, verifyGoogleIdToken } from '../lib/firebaseAdmin';
-import { createMerchant, getStoreDetails, SurfboardApiError } from '../services/surfboard';
+import { createCustomer, createMerchant, getStoreDetails, SurfboardApiError } from '../services/surfboard';
 
 export const authRouter = Router();
 
 // Pre-provisioned once via scripts/test-create-billing-plan.ts — Create
 // Merchant fails without an existing billing plan for the partner.
 const TRANSACTION_PRICING_PLAN = 'GF_STANDARD';
+// A customer isn't tied to any one publisher's merchant (they can buy from
+// many), so Create Customer — confirmed live to require a MERCHANT-ID header
+// despite Surfboard's own guide not mentioning one — uses the same shared
+// fallback merchant every other "no specific merchant applies" case in this
+// project already defaults to.
+const FALLBACK_MERCHANT_ID = process.env.SURFBOARD_DEMO_FALLBACK_MERCHANT_ID as string;
 
 interface PublisherBusinessDetails {
   storeName: string;
@@ -65,6 +71,28 @@ async function startMerchantOnboarding(publisherId: string, email: string, detai
   }
 }
 
+// Minimal wire-up of Surfboard's Customers API — just name/email, the only
+// customer data this app actually collects today. Best-effort, same pattern
+// as startMerchantOnboarding: never blocks account creation on failure, and
+// the resulting customerId isn't used for anything yet (no saved-card reuse,
+// no richer order data) — this only proves the integration works.
+async function registerSurfboardCustomer(userId: string, firstName: string, lastName: string, email: string) {
+  try {
+    const res = await createCustomer(FALLBACK_MERCHANT_ID, {
+      firstName,
+      lastName,
+      emails: [{ email, role: 'personal' }],
+    });
+    await prisma.user.update({ where: { id: userId }, data: { surfboardCustomerId: res.data.customerId } });
+  } catch (err) {
+    if (err instanceof SurfboardApiError) {
+      console.error('Create Customer failed at signup:', err.status, JSON.stringify(err.body));
+    } else {
+      console.error('Create Customer failed at signup:', err);
+    }
+  }
+}
+
 function toPublicUser(user: User) {
   return {
     id: user.id,
@@ -72,6 +100,7 @@ function toPublicUser(user: User) {
     role: user.role,
     firstName: user.firstName,
     lastName: user.lastName,
+    surfboardCustomerId: user.surfboardCustomerId,
   };
 }
 
@@ -139,6 +168,8 @@ authRouter.post('/signup', asyncHandler(async (req, res) => {
       phoneCode,
       phoneNumber,
     });
+  } else {
+    await registerSurfboardCustomer(user.id, firstName, lastName, email);
   }
 
   const token = signToken({ sub: user.id, role: user.role });
@@ -194,6 +225,8 @@ authRouter.post('/google', asyncHandler(async (req, res) => {
     });
     if (requestedRole === Role.PUBLISHER) {
       await prisma.publisher.create({ data: { userId: user.id, status: PublisherStatus.PENDING } });
+    } else {
+      await registerSurfboardCustomer(user.id, user.firstName, user.lastName, email);
     }
   }
 

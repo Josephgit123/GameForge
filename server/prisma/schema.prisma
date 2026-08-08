@@ -95,6 +95,10 @@ model User {
   role         Role
   firstName    String
   lastName     String
+  // Surfboard's Customers API (POST /customers) profile for this account —
+  // minimal wire-up: created with just name/email at signup, best-effort,
+  // never blocks account creation on failure. See auth.ts#registerSurfboardCustomer.
+  surfboardCustomerId String?
 
   publisher      Publisher?
   orders         Order[]        @relation("CustomerOrders")

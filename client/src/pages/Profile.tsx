@@ -66,6 +66,12 @@ export function Profile() {
           <div className="mt-1 inline-block rounded-full bg-iron-800 px-2 py-0.5 text-xs text-steam-400">
             {user.role}
           </div>
+          {user.role === 'CUSTOMER' && (
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-steam-600">
+              <span>Customer ID</span>
+              <span className="font-mono text-steam-400">{user.surfboardCustomerId ?? 'Not set up yet'}</span>
+            </div>
+          )}
         </div>
       </div>
 
